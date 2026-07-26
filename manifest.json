@@ -1,0 +1,48 @@
+{
+  "name": "WargaNet RT/RW — Administrasi Digital RT",
+  "short_name": "WargaNet",
+  "description": "Sistem administrasi digital RT/RW terpadu: data warga, iuran, kas, aset, pengaduan, patroli & SOS, voting digital, pengumuman, dan log transparansi. Dapat digunakan tanpa koneksi internet.",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f1f5f9",
+  "theme_color": "#111111",
+  "categories": ["productivity", "government", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Panic Button / SOS",
+      "short_name": "SOS",
+      "description": "Kirim panggilan darurat ke pengurus dan petugas keamanan",
+      "url": "./index.html#patrol"
+    },
+    {
+      "name": "Iuran Bulanan",
+      "short_name": "Iuran",
+      "description": "Cek dan bayar tagihan iuran warga",
+      "url": "./index.html#iuran"
+    },
+    {
+      "name": "Buat Pengaduan",
+      "short_name": "Pengaduan",
+      "description": "Laporkan kerusakan fasilitas atau gangguan lingkungan",
+      "url": "./index.html#pengaduan"
+    }
+  ]
+}
