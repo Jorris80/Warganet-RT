@@ -169,12 +169,113 @@ main{max-width:1200px;margin:0 auto;padding:14px}
   justify-content:center;background:#fff;margin:0 auto;text-align:center;padding:8px;
   font-size:11px;word-break:break-all;font-weight:800}
 
+/* ============================================================
+   PETA LEAFLET — pos patroli, bidang persil, pelacakan langsung
+   ============================================================ */
+.wnmap{height:440px;border:2px solid #000;background:#dbeafe;position:relative;z-index:0}
+.wnmap.tall{height:520px}
+@media(max-width:700px){.wnmap{height:340px}.wnmap.tall{height:380px}}
+.wnmap.drawing{cursor:crosshair}
+/* Saat menggambar, semua objek peta dibuat tembus-klik agar tiap ketukan
+   selalu sampai ke peta — termasuk ketukan tepat di atas bidang yang sudah ada. */
+.wnmap.drawing .leaflet-overlay-pane,
+.wnmap.drawing .leaflet-marker-pane,
+.wnmap.drawing .leaflet-tooltip-pane,
+.wnmap.drawing .leaflet-popup-pane{pointer-events:none}
+.maptools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.mapnote{border:2px solid #000;background:#fef9c3;padding:7px 10px;font-size:11.5px;
+  font-weight:700;margin-bottom:8px}
+.mapnote.warn{background:#fee2e2}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:11px;font-weight:800}
+.legend i{display:inline-block;width:13px;height:13px;border:2px solid #000;
+  margin-right:4px;vertical-align:-2px}
+.mapfallback{position:relative;background:#dcfce7;border:2px solid #000;height:300px;
+  background-image:linear-gradient(#00000010 1px,transparent 1px),
+    linear-gradient(90deg,#00000010 1px,transparent 1px);background-size:34px 34px}
+
+/* label nomor rumah pada bidang */
+.lbl-bidang{background:#fff;border:2px solid #000;font-size:10px;font-weight:900;
+  padding:1px 4px;white-space:nowrap;box-shadow:1px 1px 0 #000;text-align:center}
+.lbl-bidang.fasum{background:#fed7aa}
+.leaflet-tooltip.lbl-bidang:before{display:none}
+
+/* penanda pos jaga & petugas */
+.mk{width:30px;height:30px;border:2px solid #000;box-shadow:2px 2px 0 #000;background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900}
+.mk.round{border-radius:50%}
+.mk-live{width:34px;height:34px;border:3px solid #000;border-radius:50%;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  box-shadow:0 0 0 4px rgba(0,0,0,.12);animation:blip 1.6s ease-out infinite}
+@keyframes blip{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}
+  70%{box-shadow:0 0 0 16px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+.leaflet-popup-content-wrapper{border-radius:0;border:2px solid #000;box-shadow:4px 4px 0 #000}
+.leaflet-popup-content{margin:10px 12px;font-size:12.5px;line-height:1.5}
+.leaflet-popup-tip{border:2px solid #000}
+.leaflet-container{font-family:inherit}
+.leaflet-bar a{border-radius:0 !important;border-bottom:2px solid #000 !important;
+  color:#000 !important;font-weight:900}
+.leaflet-control-attribution{font-size:9px}
+
+/* pil status berbagi lokasi */
+.livepill{display:inline-flex;align-items:center;gap:6px;border:2px solid #000;
+  background:#111;color:#fff;padding:5px 9px;font-size:11px;font-weight:900;
+  text-transform:uppercase;letter-spacing:.5px}
+.livepill .dot{width:9px;height:9px;border-radius:50%;background:#22c55e;
+  animation:pulse2 1.2s infinite}
+@keyframes pulse2{50%{opacity:.25}}
+.livepill.off{background:#fff;color:#111}.livepill.off .dot{background:#94a3b8;animation:none}
+
+/* ============================================================
+   FOTO PROFIL — avatar, pemilih berkas, dan tampilan zoom
+   ============================================================ */
+.ava{width:44px;height:44px;border:2px solid #000;background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;
+  flex-shrink:0;overflow:hidden;position:relative}
+.ava img{width:100%;height:100%;object-fit:cover;display:block}
+.ava.lg{width:64px;height:64px;font-size:20px}
+.ava.xl{width:92px;height:92px;font-size:28px}
+.ava.klik{cursor:zoom-in}
+.ava.klik:hover{box-shadow:0 0 0 3px var(--acc)}
+.fotopick{display:flex;gap:10px;align-items:center;border:2px solid #000;padding:8px;
+  background:#f8fafc}
+.fotopick .ava{width:56px;height:56px}
+.fotohint{font-size:10.5px;color:var(--muted);margin-top:3px}
+
+/* lightbox zoom */
+.lbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;touch-action:none}
+.lbox .stage{flex:1;width:100%;overflow:hidden;display:flex;align-items:center;
+  justify-content:center;cursor:grab}
+.lbox .stage.grab{cursor:grabbing}
+.lbox img{max-width:none;transform-origin:center center;user-select:none;
+  -webkit-user-drag:none;transition:transform .05s linear}
+.lbox .lbar{width:100%;display:flex;gap:8px;align-items:center;justify-content:center;
+  padding:10px;background:#111;flex-wrap:wrap}
+.lbox .lcap{color:#fff;font-size:12px;font-weight:800;margin-right:auto;padding-left:8px}
+.lbox .btn{background:#fff}
+
+/* ============================================================
+   CCTV
+   ============================================================ */
+.camcard{border:2px solid #000;background:#fff;box-shadow:var(--shadow);overflow:hidden}
+.camframe{position:relative;width:100%;aspect-ratio:16/9;background:#0f172a;
+  border-bottom:2px solid #000;display:flex;align-items:center;justify-content:center}
+.camframe iframe,.camframe video,.camframe img{width:100%;height:100%;border:0;
+  object-fit:cover;display:block;background:#000}
+.camoff{color:#94a3b8;font-size:12px;font-weight:800;text-align:center;padding:16px;
+  line-height:1.6}
+.camtag{position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:9.5px;
+  font-weight:900;letter-spacing:.6px;padding:3px 7px;border:2px solid #000;z-index:2}
+.camtag.off{background:#64748b}
+.cammeta{padding:11px}
+
 /* ---------- print (Laporan PDF) ---------- */
 #printArea{display:none}
 @media print{
   body{background:#fff;padding:0}
   header,.tabwrap,#netbar,#toasts,.noprint,main{display:none !important}
   #printArea{display:block !important;padding:0}
+  .wnmap,.camframe,.lbox,.leaflet-control-container{display:none !important}
   .card{box-shadow:none;border:1px solid #000}
   table{min-width:0;font-size:11px}
   th{background:#eee !important;color:#000 !important;-webkit-print-color-adjust:exact}
@@ -187,7 +288,7 @@ main{max-width:1200px;margin:0 auto;padding:14px}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="WargaNet">
-<meta name="description" content="Sistem Administrasi Digital RT/RW Terpadu — data warga, iuran, kas, aset, pengaduan, patroli, voting, dan pengumuman.">
+<meta name="description" content="Sistem Administrasi Digital RT/RW Terpadu — data warga, iuran, kas, aset, pengaduan, peta bidang, CCTV, patroli GPS langsung, voting, dan pengumuman.">
 <script src="config.js"></script>
 </head>
 <body>
@@ -274,10 +375,25 @@ function callServer(action, payload){
 /* ---------- state ---------- */
 var S = {
   ready:false, online:navigator.onLine, role:'warga', tab:'overview',
-  settings:{appTitle:'WargaNet RT 05',appSubtitle:'Villa Harmony',managerPin:'1234',iuranNominal:'150000',namaRT:'RT 05 / RW 02'},
+  settings:{appTitle:'WargaNet RT 05',appSubtitle:'Villa Harmony',managerPin:'1234',
+            iuranNominal:'150000',namaRT:'RT 05 / RW 02',
+            petaLat:'-6.9034',petaLng:'107.6181',petaZoom:'18',petaBasemap:'satelit'},
   warga:[],pengurus:[],iuran:[],kas:[],aset:[],pengaduan:[],voting:[],
   pengumuman:[],diskusi:[],patroli:[],panic:[],logs:[],
+  bidang:[], cctv:[], patroliSesi:[],
   aiEnabled:false, me:null, outbox:[], aiChat:[]
+};
+
+/* --- keadaan peta & pelacakan langsung (tidak ikut disimpan ke cache) --- */
+var MAP = {
+  inst:null, layer:{}, base:null, siap:false, gagal:false,
+  mode:'lihat',          // 'lihat' | 'gambar'
+  draft:[],              // titik poligon yang sedang digambar
+  tunggu:null
+};
+var LIVE = {
+  sesiId:null, deviceId:null, watch:null, timer:null, poll:null,
+  lastKirim:0, lastPos:null, kirimGagal:0
 };
 
 function loadCache(){
@@ -294,7 +410,8 @@ function saveCache(){
     localStorage.setItem(LS_CACHE, JSON.stringify({
       settings:S.settings,warga:S.warga,pengurus:S.pengurus,iuran:S.iuran,kas:S.kas,
       aset:S.aset,pengaduan:S.pengaduan,voting:S.voting,pengumuman:S.pengumuman,
-      diskusi:S.diskusi,patroli:S.patroli,panic:S.panic,logs:S.logs,aiEnabled:S.aiEnabled
+      diskusi:S.diskusi,patroli:S.patroli,panic:S.panic,logs:S.logs,aiEnabled:S.aiEnabled,
+      bidang:S.bidang,cctv:S.cctv
     }));
   }catch(e){}
 }
@@ -305,7 +422,8 @@ function saveMe(){ try{ localStorage.setItem(LS_USER, JSON.stringify(S.me)); }ca
 function applyBootstrap(d, fromCache){
   if(!d) return;
   ['settings','warga','pengurus','iuran','kas','aset','pengaduan','voting',
-   'pengumuman','diskusi','patroli','panic','logs'].forEach(function(k){
+   'pengumuman','diskusi','patroli','panic','logs',
+   'bidang','cctv','patroliSesi'].forEach(function(k){
     if(d[k] !== undefined) S[k] = d[k];
   });
   if(d.aiEnabled !== undefined) S.aiEnabled = d.aiEnabled;
@@ -347,6 +465,184 @@ function bulanIni(){ return BULAN[new Date().getMonth()]; }
 function tempId(pfx){ return pfx+'-LOKAL-'+Date.now()+'-'+Math.floor(Math.random()*900+100); }
 function isPengurus(){ return S.role === 'pengurus'; }
 
+/* ============================================================
+ * FOTO PROFIL
+ * ============================================================ */
+
+/**
+ * Ubah nilai kolom fotoUrl menjadi alamat gambar yang bisa dipasang di <img>.
+ * Nilai boleh berupa ID berkas Drive, tautan Drive lengkap, atau URL gambar biasa.
+ */
+function fotoSrc(v, lebar){
+  v = String(v||'').trim();
+  if(!v) return '';
+  lebar = lebar || 400;
+  if(v.indexOf('data:') === 0) return v;
+  var m = v.match(/[-\w]{25,}/);
+  if(/drive\.google\.com|googleusercontent\.com/.test(v) && m) v = m[0];
+  if(/^https?:\/\//i.test(v)) return v;
+  if(/^[-\w]{25,}$/.test(v)) return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(v)+'&sz=w'+lebar;
+  return '';
+}
+
+/** Blok avatar: pakai foto bila ada, jika tidak pakai inisial nama. */
+function avatarHtml(nama, foto, kelas, bisaZoom){
+  var src = fotoSrc(foto, 400);
+  var cls = 'ava'+(kelas?' '+kelas:'')+((src&&bisaZoom!==false)?' klik':'');
+  var atr = (src && bisaZoom!==false)
+    ? ' onclick="zoomFoto(\'' + jsq(foto) + '\',\'' + jsq(nama||'') + '\')" title="Ketuk untuk perbesar"'
+    : '';
+  if(src){
+    return '<div class="'+cls+'"'+atr+'><img src="'+esc(src)+'" alt="'+esc(nama||'Foto')+'" loading="lazy" '+
+           'onerror="this.parentNode.innerHTML=\'' + jsq(initials(nama)) + '\'"></div>';
+  }
+  return '<div class="'+cls+'">'+esc(initials(nama))+'</div>';
+}
+
+/**
+ * Perkecil gambar di sisi peramban sebelum diunggah.
+ * Sisi terpanjang dibatasi maxPx, hasil dikompres ke JPEG.
+ */
+function kecilkanGambar(file, maxPx, mutu){
+  maxPx = maxPx || 640; mutu = mutu || 0.78;
+  return new Promise(function(resolve, reject){
+    if(!file) return reject(new Error('Berkas tidak dipilih.'));
+    if(!/^image\//.test(file.type)) return reject(new Error('Berkas harus berupa gambar (JPG/PNG).'));
+    var fr = new FileReader();
+    fr.onerror = function(){ reject(new Error('Gagal membaca berkas.')); };
+    fr.onload = function(){
+      var img = new Image();
+      img.onerror = function(){ reject(new Error('Gambar tidak dapat dibuka.')); };
+      img.onload = function(){
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var sk = Math.min(1, maxPx/Math.max(w,h));
+        var cw = Math.max(1, Math.round(w*sk)), ch = Math.max(1, Math.round(h*sk));
+        var cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        var cx = cv.getContext('2d');
+        cx.fillStyle = '#ffffff'; cx.fillRect(0,0,cw,ch);
+        cx.drawImage(img, 0, 0, cw, ch);
+        try{ resolve(cv.toDataURL('image/jpeg', mutu)); }
+        catch(e){ reject(new Error('Gagal mengompres gambar.')); }
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+ * GEOMETRI — luas poligon & titik tengah
+ * ============================================================ */
+
+/** Luas (m²) dari cincin [[lat,lng],...]. */
+function luasRing(ring){
+  if(!ring || ring.length < 3) return 0;
+  var latRef = 0, i;
+  for(i=0;i<ring.length;i++) latRef += Number(ring[i][0]);
+  latRef /= ring.length;
+  var rad = Math.PI/180;
+  var mLat = 111132.92 - 559.82*Math.cos(2*latRef*rad) + 1.175*Math.cos(4*latRef*rad);
+  var mLng = 111412.84*Math.cos(latRef*rad) - 93.5*Math.cos(3*latRef*rad);
+  var sum = 0;
+  for(i=0;i<ring.length;i++){
+    var a = ring[i], b = ring[(i+1)%ring.length];
+    sum += (Number(a[1])*mLng)*(Number(b[0])*mLat) - (Number(b[1])*mLng)*(Number(a[0])*mLat);
+  }
+  return Math.abs(sum/2);
+}
+
+/** Titik tengah sederhana (rata-rata simpul) untuk menaruh label. */
+function pusatRing(ring){
+  var la=0, ln=0;
+  for(var i=0;i<ring.length;i++){ la += Number(ring[i][0]); ln += Number(ring[i][1]); }
+  return [la/ring.length, ln/ring.length];
+}
+
+/** Jarak dua titik dalam meter (haversine). */
+function jarakMeter(a, b){
+  var R = 6371000, rad = Math.PI/180;
+  var dLa = (b[0]-a[0])*rad, dLn = (b[1]-a[1])*rad;
+  var x = Math.sin(dLa/2)*Math.sin(dLa/2) +
+          Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(dLn/2)*Math.sin(dLn/2);
+  return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+function parseRing(v){
+  try{
+    var a = (typeof v === 'string') ? JSON.parse(v) : v;
+    return (a && a.length >= 3) ? a : null;
+  }catch(e){ return null; }
+}
+
+function luasTeks(m2){
+  m2 = Number(m2)||0;
+  if(m2 >= 10000) return (m2/10000).toFixed(2).replace('.',',')+' ha';
+  return Math.round(m2).toLocaleString('id-ID')+' m²';
+}
+
+/* ============================================================
+ * LEAFLET — dimuat sesuai kebutuhan dari CDN
+ * ============================================================ */
+var LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+var LEAFLET_JS  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+var _leafletP = null;
+
+function ensureLeaflet(){
+  if(typeof L !== 'undefined') return Promise.resolve(L);
+  if(_leafletP) return _leafletP;
+  _leafletP = new Promise(function(resolve, reject){
+    if(!document.getElementById('leafletCss')){
+      var lk = document.createElement('link');
+      lk.id='leafletCss'; lk.rel='stylesheet'; lk.href=LEAFLET_CSS;
+      document.head.appendChild(lk);
+    }
+    var sc = document.createElement('script');
+    sc.src = LEAFLET_JS; sc.async = true;
+    sc.onload  = function(){ (typeof L!=='undefined') ? resolve(L) : reject(new Error('Leaflet tidak termuat.')); };
+    sc.onerror = function(){ _leafletP = null; reject(new Error('Peta gagal dimuat — perlu koneksi internet.')); };
+    document.head.appendChild(sc);
+  });
+  return _leafletP;
+}
+
+/** Definisi basemap. Citra satelit dari Esri World Imagery. */
+function basemapDefs(){
+  return {
+    jalan: {
+      nama:'Peta Jalan (OSM)',
+      url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      opt:{maxZoom:19, attribution:'&copy; Kontributor OpenStreetMap'}
+    },
+    satelit: {
+      nama:'Citra Satelit',
+      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      opt:{maxZoom:19, maxNativeZoom:19, attribution:'Citra &copy; Esri, Maxar, Earthstar Geographics'}
+    },
+    topo: {
+      nama:'Topografi',
+      url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      opt:{maxZoom:17, attribution:'&copy; OpenTopoMap, Kontributor OSM'}
+    }
+  };
+}
+
+/* ---------- identitas perangkat untuk pelacakan patroli ---------- */
+function deviceId(){
+  if(LIVE.deviceId) return LIVE.deviceId;
+  var k = 'warganet_device';
+  var v = '';
+  try{ v = localStorage.getItem(k) || ''; }catch(e){}
+  if(!v){
+    v = 'DEV-' + Math.random().toString(36).slice(2,8).toUpperCase() + '-' +
+        Date.now().toString(36).slice(-4).toUpperCase();
+    try{ localStorage.setItem(k, v); }catch(e){}
+  }
+  LIVE.deviceId = v;
+  return v;
+}
+
+
 function toast(msg, kind){
   var box = $('toasts');
   var el = document.createElement('div');
@@ -382,6 +678,12 @@ var LOCAL_MAP = {
   diskusi_update:   {coll:'diskusi',    op:'upd'},
   diskusi_delete:   {coll:'diskusi',    op:'del'},
   patroli_checkin:  {coll:'patroli',    op:'upd'},
+  bidang_add:       {coll:'bidang',     op:'add',  pfx:'BDG'},
+  bidang_update:    {coll:'bidang',     op:'upd'},
+  bidang_delete:    {coll:'bidang',     op:'del'},
+  cctv_add:         {coll:'cctv',       op:'add',  pfx:'CAM'},
+  cctv_update:      {coll:'cctv',       op:'upd'},
+  cctv_delete:      {coll:'cctv',       op:'del'},
   sos_trigger:      {coll:'panic',      op:'add',  pfx:'SOS'},
   sos_resolve:      {coll:'panic',      op:'upd'}
 };
@@ -502,7 +804,9 @@ function applyLocal(action, p){
 
 /* Aksi yang tidak boleh diantrikan offline (butuh server / tidak idempoten). */
 var ONLINE_ONLY = {verify_pin:1, iuran_generate:1, iuran_reminder:1,
-                   ai_financial_summary:1, ai_complaint:1, ai_assistant:1, bootstrap:1};
+                   ai_financial_summary:1, ai_complaint:1, ai_assistant:1, bootstrap:1,
+                   foto_upload:1, patroli_sesi_start:1, patroli_sesi_stop:1,
+                   patroli_ping:1, patroli_live:1};
 
 /**
  * Titik masuk tunggal semua mutasi.
@@ -632,7 +936,7 @@ function openModal(title, bodyHtml, footerHtml, wide){
 var _formCb = null;
 function formModal(title, fields, initial, onSubmit, wide){
   initial = initial || {};
-  _formCb = { fields: fields, cb: onSubmit };
+  _formCb = { fields: fields, cb: onSubmit, nama: initial.nama || initial.namaPos || title };
   var h = '';
   fields.forEach(function(f){
     var v = initial[f.k];
@@ -642,11 +946,26 @@ function formModal(title, fields, initial, onSubmit, wide){
     if(f.t === 'textarea'){
       h += '<textarea class="inp" id="f_'+f.k+'" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea>';
     } else if(f.t === 'select'){
-      h += '<select class="inp" id="f_'+f.k+'">';
-      (f.opt||[]).forEach(function(o){
-        h += '<option value="'+esc(o)+'"'+(String(v)===String(o)?' selected':'')+'>'+esc(o)+'</option>';
+      h += '<select class="inp" id="f_'+f.k+'"'+(f.onchange?' onchange="'+f.onchange+'"':'')+'>';
+      var opsi = f.optv || (f.opt||[]).map(function(o){ return {v:o, l:o}; });
+      opsi.forEach(function(o){
+        h += '<option value="'+esc(o.v)+'"'+(String(v)===String(o.v)?' selected':'')+'>'+esc(o.l)+'</option>';
       });
       h += '</select>';
+    } else if(f.t === 'color'){
+      h += '<div class="row"><input type="color" id="f_'+f.k+'" value="'+esc(v||'#3b82f6')+'" '+
+           'style="width:56px;height:38px;border:2px solid #000;padding:2px;background:#fff">'+
+           '<span class="sub">Warna isian bidang di peta</span></div>';
+    } else if(f.t === 'foto'){
+      h += '<div class="fotopick">'+
+             '<div id="fp_prev_'+f.k+'">'+avatarHtml(initial.nama||'', v, '', false)+'</div>'+
+             '<div style="flex:1">'+
+               '<input type="file" id="fp_file_'+f.k+'" accept="image/*" style="font-size:11.5px;max-width:100%">'+
+               '<input type="hidden" id="f_'+f.k+'" value="'+esc(v)+'">'+
+               '<div class="fotohint" id="fp_hint_'+f.k+'">JPG/PNG. Otomatis diperkecil sebelum diunggah.</div>'+
+             '</div>'+
+             (v?'<button type="button" class="btn sm red" onclick="hapusFotoField(\''+jsq(f.k)+'\')">Hapus</button>':'')+
+           '</div>';
     } else if(f.t === 'checkbox'){
       h += '<label class="row" style="cursor:pointer"><input type="checkbox" id="f_'+f.k+'"'+(v?' checked':'')+
            ' style="width:18px;height:18px"> <span style="font-weight:800;font-size:12px">'+esc(f.l)+'</span></label>';
@@ -658,7 +977,163 @@ function formModal(title, fields, initial, onSubmit, wide){
   });
   openModal(title, h,
     '<button class="btn" onclick="closeModal()">Batal</button>'+
-    '<button class="btn dark" onclick="submitForm()">Simpan</button>', wide);
+    '<button class="btn dark" id="btnSimpanForm" onclick="submitForm()">Simpan</button>', wide);
+
+  /* pasang penangan unggah untuk setiap ruas bertipe foto */
+  fields.forEach(function(f){
+    if(f.t !== 'foto') return;
+    var inp = $('fp_file_'+f.k);
+    if(inp) inp.onchange = function(){ unggahFotoField(f.k, this.files && this.files[0]); };
+  });
+}
+
+/* ---------- unggah foto dari dalam formulir ---------- */
+function unggahFotoField(key, file){
+  if(!file) return;
+  var hint = $('fp_hint_'+key), prev = $('fp_prev_'+key), tombol = $('btnSimpanForm');
+  function pesan(t){ if(hint) hint.textContent = t; }
+
+  if(!S.online){ pesan('Perlu koneksi internet untuk mengunggah foto.'); toast('Unggah foto memerlukan koneksi.','err'); return; }
+
+  pesan('Memperkecil gambar…');
+  if(tombol) tombol.disabled = true;
+
+  kecilkanGambar(file, 640, 0.78).then(function(dataUrl){
+    if(prev) prev.innerHTML = '<div class="ava"><img src="'+dataUrl+'" alt="pratinjau"></div>';
+    pesan('Mengunggah ke Google Drive…');
+    return callServer('foto_upload', {dataUrl:dataUrl, nama:(_formCb && _formCb.nama) || 'foto'});
+  }).then(function(res){
+    var el = $('f_'+key);
+    if(el) el.value = res.fotoUrl || res.fileId || '';
+    pesan('Foto siap disimpan. Tekan Simpan untuk menerapkan.');
+    if(tombol) tombol.disabled = false;
+    toast('Foto terunggah.','ok');
+  }).catch(function(err){
+    pesan(err.message || 'Gagal mengunggah foto.');
+    if(tombol) tombol.disabled = false;
+    toast(err.message || 'Gagal mengunggah foto.','err');
+  });
+}
+
+function hapusFotoField(key){
+  var el = $('f_'+key); if(el) el.value = '';
+  var prev = $('fp_prev_'+key); if(prev) prev.innerHTML = '<div class="ava">–</div>';
+  var hint = $('fp_hint_'+key); if(hint) hint.textContent = 'Foto dikosongkan. Tekan Simpan untuk menerapkan.';
+}
+
+/* ============================================================
+ * LIGHTBOX — perbesar foto profil (roda mouse, cubit layar, geser)
+ * ============================================================ */
+var ZOOM = {sk:1, x:0, y:0, drag:false, px:0, py:0, pinch:0, psk:1};
+
+function zoomFoto(foto, judul){
+  var src = fotoSrc(foto, 1600);
+  if(!src){ toast('Belum ada foto untuk ditampilkan.','info'); return; }
+  ZOOM = {sk:1, x:0, y:0, drag:false, px:0, py:0, pinch:0, psk:1};
+
+  var box = document.createElement('div');
+  box.className = 'lbox'; box.id = 'lbox';
+  box.innerHTML =
+    '<div class="stage" id="lstage"><img id="limg" src="'+esc(src)+'" alt="'+esc(judul||'Foto')+'"></div>'+
+    '<div class="lbar">'+
+      '<span class="lcap">'+esc(judul||'Foto profil')+'</span>'+
+      '<button class="btn sm" onclick="zoomBy(-0.35)">−</button>'+
+      '<button class="btn sm" id="lzlabel" onclick="zoomReset()">100%</button>'+
+      '<button class="btn sm" onclick="zoomBy(0.35)">+</button>'+
+      '<a class="btn sm" href="'+esc(src)+'" target="_blank" rel="noopener">Buka Asli</a>'+
+      '<button class="btn sm dark" onclick="tutupZoom()">Tutup</button>'+
+    '</div>';
+  document.body.appendChild(box);
+
+  var stage = $('lstage'), img = $('limg');
+
+  img.onload = function(){
+    var maxW = stage.clientWidth - 24, maxH = stage.clientHeight - 24;
+    var sk = Math.min(maxW/img.naturalWidth, maxH/img.naturalHeight, 1);
+    img.style.width = Math.max(60, Math.round(img.naturalWidth*sk)) + 'px';
+    img.style.height = 'auto';
+    zoomTerap();
+  };
+  img.onerror = function(){
+    stage.innerHTML = '<div style="color:#fff;font-weight:800;padding:24px;text-align:center">'+
+      'Foto tidak dapat dimuat.<br><span style="font-weight:600;font-size:12px">'+
+      'Periksa koneksi, atau pastikan berkas Drive dibagikan sebagai “siapa saja yang memiliki tautan”.</span></div>';
+  };
+
+  stage.addEventListener('wheel', function(e){
+    e.preventDefault(); zoomBy(e.deltaY < 0 ? 0.2 : -0.2);
+  }, {passive:false});
+
+  stage.addEventListener('mousedown', function(e){
+    ZOOM.drag = true; ZOOM.px = e.clientX; ZOOM.py = e.clientY; stage.classList.add('grab');
+  });
+  window.addEventListener('mousemove', zoomGeser);
+  window.addEventListener('mouseup', zoomLepas);
+
+  stage.addEventListener('touchstart', function(e){
+    if(e.touches.length === 2){
+      ZOOM.pinch = zoomJarakSentuh(e); ZOOM.psk = ZOOM.sk;
+    }else if(e.touches.length === 1){
+      ZOOM.drag = true; ZOOM.px = e.touches[0].clientX; ZOOM.py = e.touches[0].clientY;
+    }
+  }, {passive:true});
+
+  stage.addEventListener('touchmove', function(e){
+    if(e.touches.length === 2 && ZOOM.pinch){
+      e.preventDefault();
+      var d = zoomJarakSentuh(e);
+      ZOOM.sk = Math.min(6, Math.max(0.4, ZOOM.psk * (d/ZOOM.pinch)));
+      zoomTerap();
+    }else if(e.touches.length === 1 && ZOOM.drag){
+      e.preventDefault();
+      var t = e.touches[0];
+      ZOOM.x += t.clientX - ZOOM.px; ZOOM.y += t.clientY - ZOOM.py;
+      ZOOM.px = t.clientX; ZOOM.py = t.clientY;
+      zoomTerap();
+    }
+  }, {passive:false});
+
+  stage.addEventListener('touchend', function(e){
+    if(e.touches.length < 2) ZOOM.pinch = 0;
+    if(e.touches.length === 0) ZOOM.drag = false;
+  }, {passive:true});
+
+  box.addEventListener('mousedown', function(e){ if(e.target === box) tutupZoom(); });
+  document.addEventListener('keydown', zoomTombol);
+}
+
+function zoomJarakSentuh(e){
+  var a = e.touches[0], b = e.touches[1];
+  return Math.sqrt(Math.pow(a.clientX-b.clientX,2) + Math.pow(a.clientY-b.clientY,2));
+}
+function zoomGeser(e){
+  if(!ZOOM.drag) return;
+  ZOOM.x += e.clientX - ZOOM.px; ZOOM.y += e.clientY - ZOOM.py;
+  ZOOM.px = e.clientX; ZOOM.py = e.clientY;
+  zoomTerap();
+}
+function zoomLepas(){
+  ZOOM.drag = false;
+  var st = $('lstage'); if(st) st.classList.remove('grab');
+}
+function zoomBy(d){ ZOOM.sk = Math.min(6, Math.max(0.4, ZOOM.sk + d)); zoomTerap(); }
+function zoomReset(){ ZOOM.sk = 1; ZOOM.x = 0; ZOOM.y = 0; zoomTerap(); }
+function zoomTerap(){
+  var img = $('limg'); if(!img) return;
+  img.style.transform = 'translate('+ZOOM.x+'px,'+ZOOM.y+'px) scale('+ZOOM.sk+')';
+  var lb = $('lzlabel'); if(lb) lb.textContent = Math.round(ZOOM.sk*100)+'%';
+}
+function zoomTombol(e){
+  if(e.key === 'Escape') tutupZoom();
+  else if(e.key === '+' || e.key === '=') zoomBy(0.25);
+  else if(e.key === '-') zoomBy(-0.25);
+  else if(e.key === '0') zoomReset();
+}
+function tutupZoom(){
+  var b = $('lbox'); if(b) b.parentNode.removeChild(b);
+  window.removeEventListener('mousemove', zoomGeser);
+  window.removeEventListener('mouseup', zoomLepas);
+  document.removeEventListener('keydown', zoomTombol);
 }
 
 function submitForm(){
@@ -695,7 +1170,8 @@ var TABS = [
   {id:'laporan',    l:'Laporan Kas',      i:'📄'},
   {id:'aset',       l:'Aset & Fasilitas', i:'📦'},
   {id:'pengaduan',  l:'Pengaduan',        i:'📣'},
-  {id:'patrol',     l:'Patroli & SOS',    i:'🛡️'},
+  {id:'patrol',     l:'Patroli & Peta',   i:'🛡️'},
+  {id:'cctv',       l:'CCTV Live',        i:'📹'},
   {id:'voting',     l:'Voting Digital',   i:'🗳️'},
   {id:'pengumuman', l:'Pengumuman & Forum',i:'📢'},
   {id:'audit',      l:'Log Transparansi', i:'🧾'}
@@ -723,9 +1199,16 @@ function render(){
   var fn = ({
     overview:viewOverview, warga:viewWarga, organisasi:viewOrganisasi, iuran:viewIuran,
     laporan:viewLaporan, aset:viewAset, pengaduan:viewPengaduan, patrol:viewPatrol,
-    voting:viewVoting, pengumuman:viewPengumuman, audit:viewAudit
+    cctv:viewCctv, voting:viewVoting, pengumuman:viewPengumuman, audit:viewAudit
   })[S.tab] || viewOverview;
+
+  lepasPeta();          // buang instance peta lama sebelum DOM ditimpa
+  hentikanPollLive();
   v.innerHTML = fn();
+
+  /* pemasangan komponen yang butuh DOM sudah jadi */
+  if(S.tab === 'patrol'){ pasangPeta(); mulaiPollLive(); }
+  if(S.tab === 'cctv')  { pasangCctv(); }
 }
 
 function hSection(icon, title, sub, right){
@@ -822,7 +1305,19 @@ function viewOverview(){
     stat('Pengaduan Terbuka', num(aduanBuka), 'dari '+S.pengaduan.length+' total laporan','')+
     stat('Aset Dipinjam', num(asetPinjam), S.aset.length+' item inventaris','')+
     stat('Pos Aman', posAman+' / '+S.patroli.length, 'status patroli terkini','')+
+    stat('Petugas Live', num((S.patroliSesi||[]).length),
+         (S.patroliSesi||[]).length ? 'sedang berbagi lokasi sekarang' : 'belum ada yang berpatroli','')+
+  '</div>';
+
+  /* peta, bidang, dan CCTV */
+  h += '<div class="grid g4" style="margin-bottom:14px">'+
+    stat('Bidang Terpetakan', num((S.bidang||[]).length),
+         luasTeks((S.bidang||[]).reduce(function(a,b){return a+(Number(b.luas)||0);},0))+' total','')+
+    stat('Kamera CCTV', num((S.cctv||[]).filter(function(c){return isPengurus()||c.publik;}).length),
+         num((S.cctv||[]).filter(function(c){return c.status==='Aktif';}).length)+' aktif','')+
     stat('Voting Aktif', num(S.voting.filter(function(v){return v.status==='Aktif';}).length), 'musyawarah digital','')+
+    stat('Bidang Bertuan', num((S.bidang||[]).filter(function(b){return b.wargaId;}).length),
+         'tertaut ke data warga','')+
   '</div>';
 
   /* aksi cepat + pengumuman */
@@ -832,8 +1327,8 @@ function viewOverview(){
       '<button class="btn blue" onclick="go(\'pengaduan\')">📣 Buat Pengaduan</button>'+
       '<button class="btn" onclick="go(\'iuran\')">💳 Cek Tagihan</button>'+
       '<button class="btn" onclick="openAI()">✨ Tanya Asisten AI</button>'+
-      '<button class="btn" onclick="go(\'voting\')">🗳️ Ikut Voting</button>'+
-      '<button class="btn" onclick="go(\'pengumuman\')">📢 Pengumuman</button>'+
+      '<button class="btn" onclick="go(\'patrol\')">🗺️ Peta &amp; Petugas</button>'+
+      '<button class="btn" onclick="go(\'cctv\')">📹 Lihat CCTV</button>'+
     '</div></div>';
 
   var pin = S.pengumuman.filter(function(p){ return p.isPinned; });
@@ -883,7 +1378,7 @@ function viewWarga(){
     '</tr></thead><tbody>';
   if(!list.length) h += '<tr><td colspan="6" class="empty">Tidak ada data warga yang cocok.</td></tr>';
   list.forEach(function(w){
-    h += '<tr><td><div class="row"><div class="avatar">'+esc(initials(w.nama))+'</div><div>'+
+    h += '<tr><td><div class="row">'+avatarHtml(w.nama, w.fotoUrl)+'<div>'+
         '<b>'+esc(w.nama)+'</b>'+pendingMark(w)+'<div class="sub">NIK '+esc(maskNik(w.nik))+'</div></div></div></td>'+
       '<td>'+esc(w.blok)+' '+esc(w.noRumah)+'<div class="sub">'+esc(w.statusHunian)+' • '+num(w.jumlahAnggota)+' jiwa</div></td>'+
       '<td>'+esc(w.noHp)+'<div class="sub">'+esc(w.email||'-')+'</div></td>'+
@@ -908,6 +1403,7 @@ function maskNik(n){
 function wargaFields(){
   return [
     {k:'nama',l:'Nama Kepala Keluarga',t:'text',req:true},
+    {k:'fotoUrl',l:'Foto Profil',t:'foto',help:'Boleh dikosongkan. Bisa juga diisi URL gambar langsung.'},
     {k:'nik',l:'NIK',t:'text',ph:'16 digit'},
     {k:'blok',l:'Blok',t:'text',req:true,ph:'Blok A1'},
     {k:'noRumah',l:'Nomor Rumah',t:'text',ph:'No. 12'},
@@ -941,6 +1437,8 @@ function kartuWarga(id){
   openModal('Kartu Digital Warga',
     '<div class="card flat" style="background:#111;color:#fff;text-align:center;border-color:#000">'+
       '<div style="font-size:10px;letter-spacing:1.4px;font-weight:900">'+esc(S.settings.appTitle)+'</div>'+
+      (fotoSrc(w.fotoUrl) ? '<div style="display:flex;justify-content:center;margin-top:10px">'+
+          avatarHtml(w.nama, w.fotoUrl, 'xl')+'</div>' : '')+
       '<div style="font-size:18px;font-weight:900;margin-top:6px">'+esc(w.nama)+'</div>'+
       '<div class="sub" style="color:#cbd5e1">'+esc(w.blok)+' '+esc(w.noRumah)+' • '+esc(w.statusHunian)+'</div>'+
     '</div>'+
@@ -975,7 +1473,7 @@ function viewOrganisasi(){
   h += '<div class="grid g3">';
   S.pengurus.forEach(function(p){
     h += '<div class="card"><div class="row" style="align-items:flex-start">'+
-      '<div class="avatar" style="width:52px;height:52px;font-size:17px;background:#111">'+esc(initials(p.nama))+'</div>'+
+      avatarHtml(p.nama, p.fotoUrl, 'lg')+
       '<div style="flex:1"><b style="font-size:13.5px">'+esc(p.nama)+'</b>'+pendingMark(p)+
         '<div><span class="badge b-yellow" style="margin-top:4px">'+esc(p.jabatan)+'</span></div></div></div>'+
       '<div class="sub" style="margin-top:10px;line-height:1.5">'+esc(p.tugasUtama)+'</div>'+
@@ -993,6 +1491,7 @@ function formPengurus(id){
   var init = id ? S.pengurus.filter(function(p){return p.id===id;})[0] : {periode:'2024 - 2027'};
   formModal(id?'Edit Pengurus':'Tambah Pengurus RT', [
     {k:'nama',l:'Nama Lengkap & Gelar',t:'text',req:true},
+    {k:'fotoUrl',l:'Foto Profil',t:'foto',help:'Tampil pada bagan struktur pengurus. Ketuk foto untuk memperbesar.'},
     {k:'jabatan',l:'Jabatan',t:'text',req:true,ph:'Ketua RT / Bendahara RT / …'},
     {k:'blok',l:'Blok',t:'text'},
     {k:'noRumah',l:'Nomor Rumah',t:'text'},
@@ -1440,13 +1939,17 @@ function pakaiDraftAI(id, urgency){
  * ============================================================ */
 function viewPatrol(){
   var aktif = S.panic.filter(function(p){ return p.status!=='Selesai & Aman'; });
+  var sesi  = S.patroliSesi || [];
+  var bidang = S.bidang || [];
 
-  var h = hSection('🛡️','Pusat Keamanan — Patroli & Panic Button',
-    S.patroli.length+' pos patroli • '+aktif.length+' panggilan darurat aktif','');
+  var h = hSection('🛡️','Pusat Keamanan — Peta, Patroli & Panic Button',
+    S.patroli.length+' pos jaga • '+bidang.length+' bidang terpetakan • '+
+    sesi.length+' petugas berbagi lokasi • '+aktif.length+' panggilan darurat aktif','');
 
+  /* ---------- SOS ---------- */
   h += '<div class="card" style="margin-bottom:12px;background:#fee2e2">'+
     '<h2 class="sec">🚨 Tombol Darurat (SOS)</h2>'+
-    '<div class="sub" style="margin-bottom:10px">Tekan hanya dalam keadaan darurat sungguhan. Pengurus & petugas keamanan akan langsung menerima notifikasi.</div>'+
+    '<div class="sub" style="margin-bottom:10px">Tekan hanya dalam keadaan darurat sungguhan. Pengurus &amp; petugas keamanan akan langsung menerima notifikasi.</div>'+
     '<button class="sosbtn" onclick="formSOS()">🚨 KIRIM PANGGILAN DARURAT</button>'+
     '<div class="grid g4" style="margin-top:12px">'+
       '<a class="btn" href="tel:110" style="justify-content:center;text-decoration:none;color:inherit">📞 Polisi 110</a>'+
@@ -1465,22 +1968,102 @@ function viewPatrol(){
           esc(a.lokasiDetail)+'<br>'+esc(a.timestamp)+'</div>'+
         (isPengurus()? '<div class="row" style="margin-top:8px">'+
           '<button class="btn sm blue" onclick="ubahSOS(\''+a.id+'\',\'Petugas Menuju Lokasi\')">Petugas Menuju Lokasi</button>'+
-          '<button class="btn sm green" onclick="ubahSOS(\''+a.id+'\',\'Selesai & Aman\')">Tandai Selesai &amp; Aman</button>'+
+          '<button class="btn sm green" onclick="ubahSOS(\''+a.id+'\',\'Selesai &amp; Aman\')">Tandai Selesai &amp; Aman</button>'+
         '</div>':'')+'</div>';
     });
     h += '</div>';
   }
 
-  /* peta pos patroli */
-  h += '<div class="card" style="margin-bottom:12px"><h2 class="sec">🗺️ Peta Pos Patroli</h2>'+
-    '<div class="sub" style="margin-bottom:8px">Denah sederhana posisi pos jaga di lingkungan RT.</div><div class="map">';
-  S.patroli.forEach(function(p){
-    var bg = p.status==='Lengkap - Aman'?'#bbf7d0':p.status==='Sedang Dipatroli'?'#fde047':'#fecaca';
-    h += '<div class="pin" style="left:'+(Number(p.xPercent)||50)+'%;top:'+(Number(p.yPercent)||50)+'%;background:'+bg+'" '+
-      'title="'+esc(p.namaPos)+'">'+esc(String(p.kodePos||'').slice(-2))+'</div>';
-  });
-  h += '</div></div>';
+  /* ---------- berbagi lokasi (sisi petugas) ---------- */
+  var sedang = !!LIVE.sesiId;
+  h += '<div class="card" style="margin-bottom:12px">'+
+    '<div class="spread" style="flex-wrap:wrap;gap:10px">'+
+      '<div><h2 class="sec">📡 Berbagi Lokasi Patroli</h2>'+
+        '<div class="sub">Aktifkan saat mulai berkeliling. Selama menyala, warga dapat melihat posisi Anda bergerak di peta secara langsung.</div></div>'+
+      '<span class="livepill'+(sedang?'':' off')+'" id="livePill"><span class="dot"></span>'+
+        (sedang?'SEDANG DIBAGIKAN':'TIDAK AKTIF')+'</span>'+
+    '</div>'+
+    '<div class="row" style="margin-top:10px;flex-wrap:wrap">'+
+      (sedang
+        ? '<button class="btn red" onclick="hentikanBerbagiLokasi()">⏹ Hentikan Berbagi Lokasi</button>'
+        : '<button class="btn dark" onclick="mulaiBerbagiLokasi()">▶ Mulai Berbagi Lokasi Saya</button>')+
+      '<button class="btn" onclick="petaKeLokasiSaya()">🎯 Peta ke Posisi Saya</button>'+
+    '</div>'+
+    '<div class="sub" style="margin-top:8px" id="liveInfo">'+
+      (sedang ? 'Perangkat: '+esc(deviceId())+' — biarkan layar tetap menyala agar pengiriman tidak terhenti.'
+              : 'Beberapa petugas boleh berbagi lokasi bersamaan; tiap perangkat diberi warna sendiri di peta.')+
+    '</div>'+
+  '</div>';
 
+  /* ---------- peta ---------- */
+  h += '<div class="card" style="margin-bottom:12px">'+
+    '<h2 class="sec">🗺️ Peta Lingkungan RT</h2>'+
+    '<div class="maptools">'+
+      '<select class="inp" id="selBase" style="width:auto;min-width:150px" onchange="gantiBasemap(this.value)">'+
+        Object.keys(basemapDefs()).map(function(k){
+          return '<option value="'+k+'"'+(MAPCFG.base===k?' selected':'')+'>'+esc(basemapDefs()[k].nama)+'</option>';
+        }).join('')+
+      '</select>'+
+      '<button class="chip'+(MAPCFG.show.bidang?' on':'')+'" onclick="toggleLapisan(\'bidang\')">Bidang</button>'+
+      '<button class="chip'+(MAPCFG.show.pos?' on':'')+'" onclick="toggleLapisan(\'pos\')">Pos Jaga</button>'+
+      '<button class="chip'+(MAPCFG.show.live?' on':'')+'" onclick="toggleLapisan(\'live\')">Petugas</button>'+
+      '<button class="chip'+(MAPCFG.show.cctv?' on':'')+'" onclick="toggleLapisan(\'cctv\')">CCTV</button>'+
+      '<button class="chip'+(MAPCFG.show.label?' on':'')+'" onclick="toggleLapisan(\'label\')">Label No. Rumah</button>'+
+      (isPengurus()
+        ? '<button class="btn sm dark" id="btnGambar" onclick="gambarBidangMulai()">✏️ Gambar Bidang</button>'+
+          '<button class="btn sm" onclick="simpanTampilanPeta()" title="Jadikan posisi & perbesaran peta saat ini sebagai tampilan awal">📌 Simpan Tampilan</button>'
+        : '')+
+    '</div>'+
+    '<div id="drawBar"></div>'+
+    '<div class="wnmap tall" id="petaRT"><div class="empty" style="padding:24px">Menyiapkan peta…</div></div>'+
+    '<div class="legend">'+
+      '<span><i style="background:#22c55e"></i>Rumah warga</span>'+
+      '<span><i style="background:#3b82f6"></i>Kontrak / lainnya</span>'+
+      '<span><i style="background:#f97316"></i>Fasilitas umum</span>'+
+      '<span><i style="background:#8b5cf6"></i>Tempat ibadah</span>'+
+      '<span><i style="background:#111"></i>Pos jaga</span>'+
+      '<span><i style="background:#ef4444;border-radius:50%"></i>Petugas patroli (langsung)</span>'+
+    '</div>'+
+  '</div>';
+
+  /* ---------- daftar petugas yang sedang berbagi ---------- */
+  h += '<div class="card" style="margin-bottom:12px"><h2 class="sec">📍 Petugas Sedang Bertugas</h2>'+
+       '<div id="liveList">'+htmlDaftarLive()+'</div></div>';
+
+  /* ---------- tabel bidang ---------- */
+  h += '<div class="card" style="margin-bottom:12px">'+
+    '<div class="spread" style="flex-wrap:wrap;gap:8px">'+
+      '<div><h2 class="sec">🧭 Daftar Bidang Persil</h2>'+
+        '<div class="sub">Total luas terpetakan: '+luasTeks(bidang.reduce(function(a,b){return a+(Number(b.luas)||0);},0))+'</div></div>'+
+      (isPengurus()?'<button class="btn sm dark" onclick="gambarBidangMulai()">+ Bidang Baru</button>':'')+
+    '</div>';
+  if(!bidang.length){
+    h += '<div class="empty">Belum ada bidang. '+(isPengurus()?'Tekan “Gambar Bidang”, lalu ketuk peta mengikuti batas persil.':'Pengurus belum memetakan bidang.')+'</div>';
+  }else{
+    h += '<div class="table-wrap"><table><thead><tr><th>No. Rumah</th><th>Pemilik / Penghuni</th>'+
+         '<th>Jenis</th><th>Luas</th><th>Aksi</th></tr></thead><tbody>';
+    bidang.forEach(function(b){
+      var w = S.warga.filter(function(x){return x.id===b.wargaId;})[0];
+      h += '<tr><td><b>'+esc(b.noRumah||'-')+'</b><div class="sub">'+esc(b.blok||'')+' '+esc(b.kode||'')+'</div></td>'+
+        '<td>'+(w
+          ? '<div class="row">'+avatarHtml(w.nama, w.fotoUrl)+'<div><b>'+esc(w.nama)+'</b>'+
+            '<div class="sub">'+esc(w.noHp||'-')+'</div></div></div>'
+          : '<span class="sub">'+esc(b.wargaNama||'— belum ditautkan —')+'</span>')+'</td>'+
+        '<td><span class="badge" style="background:'+esc(b.warna||'#e2e8f0')+';color:#fff">'+esc(b.jenis)+'</span>'+pendingMark(b)+'</td>'+
+        '<td>'+esc(luasTeks(b.luas))+'</td>'+
+        '<td><div class="row">'+
+          '<button class="btn sm" onclick="zoomKeBidang(\''+jsq(b.id)+'\')">Lihat</button>'+
+          (isPengurus()
+            ? '<button class="btn sm blue" onclick="formBidang(\''+jsq(b.id)+'\')">Edit</button>'+
+              '<button class="btn sm red" onclick="hapusBidang(\''+jsq(b.id)+'\')">Hapus</button>'
+            : '')+
+        '</div></td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+
+  /* ---------- pos jaga ---------- */
   h += '<div class="grid g3">';
   S.patroli.forEach(function(p){
     var cls = p.status==='Lengkap - Aman'?'b-green':p.status==='Sedang Dipatroli'?'b-yellow':'b-gray';
@@ -1489,12 +2072,639 @@ function viewPatrol(){
       '<div class="sub" style="margin-top:6px">Kode: '+esc(p.kodePos)+'<br>Petugas: '+esc(p.petugasNama)+'<br>'+
         'Terakhir: '+esc(p.jamPatroliTerakhir)+'</div>'+
       '<div class="card flat" style="margin-top:8px;background:#f8fafc;font-size:11.5px">'+esc(p.catatan)+'</div>'+
-      '<button class="btn dark sm" style="margin-top:10px;width:100%" onclick="checkinPatroli(\''+p.id+'\')">📍 Check-in Patroli</button>'+
+      '<div class="row" style="margin-top:10px">'+
+        '<button class="btn dark sm" style="flex:1" onclick="checkinPatroli(\''+jsq(p.id)+'\')">📍 Check-in</button>'+
+        (isPengurus()?'<button class="btn sm" onclick="setKoordinatPos(\''+jsq(p.id)+'\')" title="Pindahkan pin pos ke posisi GPS Anda saat ini">🛰️ Set Koordinat</button>':'')+
+      '</div>'+
     '</div>';
   });
   h += '</div>';
   return h;
 }
+
+/* ============================================================
+ * 8b. MESIN PETA (Leaflet)
+ * ============================================================ */
+var MAPCFG = {
+  base:'satelit',
+  show:{bidang:1, pos:1, live:1, cctv:1, label:1},
+  view:null            // {lat,lng,zoom} — dipertahankan antar-render
+};
+
+function pusatAwal(){
+  if(MAPCFG.view) return MAPCFG.view;
+  var la = Number(S.settings.petaLat), ln = Number(S.settings.petaLng);
+  var zm = Number(S.settings.petaZoom) || 18;
+  if(!isFinite(la) || !isFinite(ln) || (la===0 && ln===0)){
+    /* jatuhkan ke bidang atau pos pertama yang punya koordinat */
+    var ref = (S.bidang||[]).map(function(b){ var r=parseRing(b.geojson); return r?pusatRing(r):null; })
+                .filter(Boolean)[0]
+           || (S.patroli||[]).filter(function(p){ return p.lat && p.lng; })
+                .map(function(p){ return [p.lat, p.lng]; })[0];
+    if(ref) return {lat:ref[0], lng:ref[1], zoom:zm};
+    return {lat:-6.9034, lng:107.6181, zoom:16};
+  }
+  return {lat:la, lng:ln, zoom:zm};
+}
+
+function pasangPeta(){
+  var el = $('petaRT');
+  if(!el) return;
+
+  ensureLeaflet().then(function(){
+    if(!$('petaRT')) return;                 // pengguna sudah pindah tab
+    el.innerHTML = '';
+    var v = pusatAwal();
+
+    MAP.inst = L.map('petaRT', {
+      center:[v.lat, v.lng], zoom:v.zoom, zoomControl:true, attributionControl:true
+    });
+    MAP.siap = true; MAP.gagal = false;
+
+    terapkanBasemap();
+
+    MAP.layer.bidang = L.layerGroup().addTo(MAP.inst);
+    MAP.layer.pos    = L.layerGroup().addTo(MAP.inst);
+    MAP.layer.cctv   = L.layerGroup().addTo(MAP.inst);
+    MAP.layer.live   = L.layerGroup().addTo(MAP.inst);
+    MAP.layer.draft  = L.layerGroup().addTo(MAP.inst);
+
+    MAP.inst.on('click', petaDiklik);
+    MAP.inst.on('moveend zoomend', function(){
+      var c = MAP.inst.getCenter();
+      MAPCFG.view = {lat:c.lat, lng:c.lng, zoom:MAP.inst.getZoom()};
+    });
+
+    gambarBidangSemua();
+    gambarPos();
+    gambarCctvPin();
+    gambarLive();
+    terapkanVisibilitas();
+
+    setTimeout(function(){ if(MAP.inst) MAP.inst.invalidateSize(); }, 120);
+  }).catch(function(err){
+    MAP.gagal = true;
+    if(!$('petaRT')) return;
+    el.className = 'mapfallback';
+    el.innerHTML = '<div class="mapnote warn" style="margin:0">🛰️ '+esc(err.message)+
+      ' Denah sederhana ditampilkan sebagai gantinya.</div>'+ denahCadangan();
+  });
+}
+
+/** Denah kotak-kotak tanpa internet — pengganti peta saat offline. */
+function denahCadangan(){
+  var out = '';
+  S.patroli.forEach(function(p){
+    var bg = p.status==='Lengkap - Aman'?'#bbf7d0':p.status==='Sedang Dipatroli'?'#fde047':'#fecaca';
+    out += '<div class="pin" style="left:'+(Number(p.xPercent)||50)+'%;top:'+(Number(p.yPercent)||50)+'%;'+
+      'background:'+bg+'" title="'+esc(p.namaPos)+'">'+esc(String(p.kodePos||'').slice(-2))+'</div>';
+  });
+  return out;
+}
+
+function lepasPeta(){
+  if(MAP.inst){
+    try{ MAP.inst.off(); MAP.inst.remove(); }catch(e){}
+  }
+  MAP.inst = null; MAP.layer = {}; MAP.siap = false;
+  MAP.mode = 'lihat'; MAP.draft = [];
+}
+
+function terapkanBasemap(){
+  if(!MAP.inst) return;
+  var d = basemapDefs()[MAPCFG.base] || basemapDefs().jalan;
+  if(MAP.base){ try{ MAP.inst.removeLayer(MAP.base); }catch(e){} }
+  MAP.base = L.tileLayer(d.url, d.opt).addTo(MAP.inst);
+  MAP.base.bringToBack();
+}
+
+function gantiBasemap(k){
+  MAPCFG.base = k;
+  terapkanBasemap();
+}
+
+function toggleLapisan(k){
+  MAPCFG.show[k] = MAPCFG.show[k] ? 0 : 1;
+  if(k === 'label'){ gambarBidangSemua(); }
+  terapkanVisibilitas();
+  /* perbarui tampilan tombol tanpa membangun ulang peta */
+  var chips = document.querySelectorAll('.maptools .chip');
+  var urut = ['bidang','pos','live','cctv','label'];
+  for(var i=0;i<chips.length && i<urut.length;i++){
+    chips[i].className = 'chip'+(MAPCFG.show[urut[i]]?' on':'');
+  }
+}
+
+function terapkanVisibilitas(){
+  if(!MAP.inst) return;
+  [['bidang','bidang'],['pos','pos'],['live','live'],['cctv','cctv']].forEach(function(pair){
+    var lay = MAP.layer[pair[1]];
+    if(!lay) return;
+    if(MAPCFG.show[pair[0]]){ if(!MAP.inst.hasLayer(lay)) MAP.inst.addLayer(lay); }
+    else { if(MAP.inst.hasLayer(lay)) MAP.inst.removeLayer(lay); }
+  });
+}
+
+/* ---------- bidang persil ---------- */
+function warnaJenis(b){
+  if(b.warna) return b.warna;
+  if(/ibadah|musholla|masjid/i.test(b.jenis)) return '#8b5cf6';
+  if(/fasilitas|fasum|umum/i.test(b.jenis))   return '#f97316';
+  return '#22c55e';
+}
+
+function gambarBidangSemua(){
+  if(!MAP.layer.bidang) return;
+  MAP.layer.bidang.clearLayers();
+
+  (S.bidang||[]).forEach(function(b){
+    var ring = parseRing(b.geojson);
+    if(!ring) return;
+    var warna = warnaJenis(b);
+
+    var poly = L.polygon(ring, {
+      color:'#000000', weight:2, opacity:1,
+      fillColor:warna, fillOpacity:0.45
+    });
+
+    if(MAPCFG.show.label && b.noRumah){
+      poly.bindTooltip(String(b.noRumah), {
+        permanent:true, direction:'center', className:'lbl-bidang'+(b.wargaId?'':' fasum'), opacity:1
+      });
+    }
+
+    poly.on('click', function(e){
+      if(MAP.mode === 'gambar') return;      // sedang menggambar, jangan buka popup
+      if(e.originalEvent) L.DomEvent.stopPropagation(e);
+      poly.bindPopup(popupBidang(b), {maxWidth:280}).openPopup(e.latlng);
+    });
+
+    poly._bidangId = b.id;
+    MAP.layer.bidang.addLayer(poly);
+  });
+}
+
+function popupBidang(b){
+  var w = S.warga.filter(function(x){ return x.id === b.wargaId; })[0];
+  var h = '<div style="min-width:190px">'+
+    '<div style="font-weight:900;font-size:14px">'+esc(b.blok||'')+' '+esc(b.noRumah||'')+'</div>'+
+    '<div style="font-size:11px;color:#64748b;margin-bottom:6px">'+esc(b.jenis)+' • '+esc(luasTeks(b.luas))+'</div>';
+
+  if(w){
+    h += '<div style="display:flex;gap:8px;align-items:center;margin:8px 0">'+
+           avatarHtml(w.nama, w.fotoUrl)+
+           '<div><b style="font-size:12.5px">'+esc(w.nama)+'</b>'+
+           '<div style="font-size:11px;color:#64748b">'+esc(w.statusHunian||'')+' • '+num(w.jumlahAnggota)+' jiwa</div></div>'+
+         '</div>'+
+         '<div style="font-size:11.5px">📞 '+esc(w.noHp||'-')+'</div>';
+    var tunggak = S.iuran.filter(function(i){ return i.wargaId===w.id && i.status!=='Lunas'; }).length;
+    if(tunggak) h += '<div style="font-size:11.5px;margin-top:4px;color:#b91c1c;font-weight:800">⚠️ '+tunggak+' tagihan belum lunas</div>';
+    h += '<div style="margin-top:8px"><button class="btn sm" onclick="kartuWarga(\''+jsq(w.id)+'\')">Kartu Warga</button></div>';
+  }else{
+    h += '<div style="font-size:11.5px;color:#64748b">'+esc(b.wargaNama||'Belum ditautkan ke data warga.')+'</div>';
+  }
+
+  if(b.catatan) h += '<div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0">'+esc(b.catatan)+'</div>';
+  if(isPengurus()){
+    h += '<div style="margin-top:8px;display:flex;gap:5px">'+
+         '<button class="btn sm blue" onclick="formBidang(\''+jsq(b.id)+'\')">Edit</button>'+
+         '<button class="btn sm red" onclick="hapusBidang(\''+jsq(b.id)+'\')">Hapus</button></div>';
+  }
+  return h + '</div>';
+}
+
+function zoomKeBidang(id){
+  var b = (S.bidang||[]).filter(function(x){ return x.id===id; })[0];
+  var ring = b && parseRing(b.geojson);
+  if(!ring){ toast('Bidang ini belum punya geometri.','info'); return; }
+  if(!MAP.inst){ toast('Peta belum siap.','info'); return; }
+  MAP.inst.fitBounds(L.polygon(ring).getBounds(), {maxZoom:20, padding:[40,40]});
+  var el = $('petaRT'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  MAP.layer.bidang.eachLayer(function(l){
+    if(l._bidangId === id) setTimeout(function(){ l.bindPopup(popupBidang(b)).openPopup(); }, 400);
+  });
+}
+
+/* ---------- pos jaga & CCTV di peta ---------- */
+function gambarPos(){
+  if(!MAP.layer.pos) return;
+  MAP.layer.pos.clearLayers();
+  S.patroli.forEach(function(p){
+    if(!p.lat || !p.lng) return;
+    var bg = p.status==='Lengkap - Aman'?'#bbf7d0':p.status==='Sedang Dipatroli'?'#fde047':'#fecaca';
+    var ic = L.divIcon({
+      className:'', iconSize:[30,30], iconAnchor:[15,15],
+      html:'<div class="mk" style="background:'+bg+'">🛡️</div>'
+    });
+    L.marker([p.lat, p.lng], {icon:ic})
+      .bindPopup('<b>'+esc(p.namaPos)+'</b><div style="font-size:11.5px;margin-top:4px">'+
+        esc(p.kodePos)+' • '+esc(p.status)+'<br>Petugas: '+esc(p.petugasNama)+
+        '<br>Terakhir: '+esc(p.jamPatroliTerakhir)+'</div>'+
+        '<div style="margin-top:6px"><button class="btn sm dark" onclick="checkinPatroli(\''+jsq(p.id)+'\')">Check-in</button></div>')
+      .addTo(MAP.layer.pos);
+  });
+}
+
+function gambarCctvPin(){
+  if(!MAP.layer.cctv) return;
+  MAP.layer.cctv.clearLayers();
+  (S.cctv||[]).forEach(function(c){
+    if(!c.lat || !c.lng) return;
+    if(!c.publik && !isPengurus()) return;
+    var mati = c.status !== 'Aktif';
+    var ic = L.divIcon({
+      className:'', iconSize:[30,30], iconAnchor:[15,15],
+      html:'<div class="mk" style="background:'+(mati?'#e2e8f0':'#bfdbfe')+'">📹</div>'
+    });
+    L.marker([c.lat, c.lng], {icon:ic})
+      .bindPopup('<b>'+esc(c.nama)+'</b><div style="font-size:11.5px;margin-top:4px">'+
+        esc(c.lokasi||'')+'<br>Status: '+esc(c.status)+'</div>'+
+        '<div style="margin-top:6px"><button class="btn sm dark" onclick="go(\'cctv\')">Buka CCTV</button></div>')
+      .addTo(MAP.layer.cctv);
+  });
+}
+
+/* ---------- menggambar bidang baru ---------- */
+function gambarBidangMulai(){
+  if(!isPengurus()){ toast('Hanya pengurus yang dapat memetakan bidang.','err'); return; }
+  if(!MAP.inst){ toast('Peta belum siap — tunggu sebentar atau periksa koneksi.','err'); return; }
+  MAP.mode = 'gambar'; MAP.draft = [];
+  $('petaRT').classList.add('drawing');
+  perbaruiBarGambar();
+  toast('Ketuk peta mengikuti batas bidang. Minimal 3 titik.','info');
+}
+
+function petaDiklik(e){
+  if(MAP.mode !== 'gambar') return;
+  MAP.draft.push([e.latlng.lat, e.latlng.lng]);
+  gambarDraft();
+  perbaruiBarGambar();
+}
+
+function gambarDraft(){
+  if(!MAP.layer.draft) return;
+  MAP.layer.draft.clearLayers();
+  if(!MAP.draft.length) return;
+
+  if(MAP.draft.length >= 3){
+    L.polygon(MAP.draft, {color:'#ef4444', weight:2, dashArray:'6,4',
+      fillColor:'#ef4444', fillOpacity:0.25}).addTo(MAP.layer.draft);
+  }else if(MAP.draft.length === 2){
+    L.polyline(MAP.draft, {color:'#ef4444', weight:2, dashArray:'6,4'}).addTo(MAP.layer.draft);
+  }
+  MAP.draft.forEach(function(pt, i){
+    L.circleMarker(pt, {radius:6, color:'#000', weight:2, fillColor:'#fde047', fillOpacity:1})
+      .bindTooltip(String(i+1), {permanent:true, direction:'top', className:'lbl-bidang'})
+      .addTo(MAP.layer.draft);
+  });
+}
+
+function perbaruiBarGambar(){
+  var bar = $('drawBar');
+  if(!bar) return;
+  if(MAP.mode !== 'gambar'){ bar.innerHTML = ''; return; }
+  var luas = MAP.draft.length >= 3 ? luasRing(MAP.draft) : 0;
+  bar.innerHTML = '<div class="mapnote">✏️ Mode menggambar aktif — '+MAP.draft.length+' titik'+
+    (luas ? ' • perkiraan luas '+esc(luasTeks(luas)) : ' (butuh minimal 3 titik)')+
+    '<div class="row" style="margin-top:7px">'+
+      '<button class="btn sm dark" onclick="gambarSelesai()"'+(MAP.draft.length<3?' disabled':'')+'>✔ Selesai &amp; Isi Data</button>'+
+      '<button class="btn sm" onclick="gambarUndo()"'+(MAP.draft.length?'':' disabled')+'>↶ Hapus Titik Terakhir</button>'+
+      '<button class="btn sm red" onclick="gambarBatal()">✕ Batal</button>'+
+    '</div></div>';
+}
+
+function gambarUndo(){ MAP.draft.pop(); gambarDraft(); perbaruiBarGambar(); }
+
+function gambarBatal(){
+  MAP.mode = 'lihat'; MAP.draft = [];
+  if(MAP.layer.draft) MAP.layer.draft.clearLayers();
+  var el = $('petaRT'); if(el) el.classList.remove('drawing');
+  perbaruiBarGambar();
+}
+
+function gambarSelesai(){
+  if(MAP.draft.length < 3){ toast('Butuh minimal 3 titik.','err'); return; }
+  var ring = MAP.draft.slice();
+  gambarBatal();
+  formBidang(null, ring);
+}
+
+/* ---------- formulir bidang ---------- */
+function opsiWarga(){
+  var out = [{v:'', l:'— tidak ditautkan (fasum / lahan kosong) —'}];
+  (S.warga||[]).slice().sort(function(a,b){
+    return (a.blok+a.noRumah).localeCompare(b.blok+b.noRumah);
+  }).forEach(function(w){
+    out.push({v:w.id, l:w.nama+' — '+w.blok+' '+w.noRumah});
+  });
+  return out;
+}
+
+function formBidang(id, ringBaru){
+  if(!isPengurus()){ toast('Hanya pengurus yang dapat mengubah bidang.','err'); return; }
+  var b = id ? (S.bidang||[]).filter(function(x){return x.id===id;})[0] : null;
+  var ring = ringBaru || (b ? parseRing(b.geojson) : null);
+  if(!ring){ toast('Geometri bidang tidak ditemukan.','err'); return; }
+
+  var luas = Math.round(luasRing(ring));
+  var init = b ? JSON.parse(JSON.stringify(b)) : {jenis:'Rumah Warga', warna:'#22c55e'};
+  init.luas = luas;
+
+  formModal(b ? 'Edit Bidang — '+(b.noRumah||b.kode||'') : 'Bidang Baru ('+luasTeks(luas)+')', [
+    {k:'wargaId', l:'Tautkan ke Warga', t:'select', optv:opsiWarga(),
+     help:'Nomor rumah & blok akan mengikuti data warga bila dikosongkan.'},
+    {k:'noRumah', l:'Nomor Rumah (tampil sebagai label di peta)', t:'text', ph:'No. 12'},
+    {k:'blok',    l:'Blok', t:'text', ph:'Blok A1'},
+    {k:'kode',    l:'Kode Bidang / NIB', t:'text', ph:'A1-12'},
+    {k:'jenis',   l:'Jenis Bidang', t:'select',
+     opt:['Rumah Warga','Rumah Kontrakan','Fasilitas Umum','Tempat Ibadah','Lahan Kosong','Jalan & Saluran','Lainnya']},
+    {k:'warna',   l:'Warna di Peta', t:'color'},
+    {k:'luas',    l:'Luas (m²)', t:'number', help:'Terisi otomatis dari geometri; boleh dikoreksi manual.'},
+    {k:'catatan', l:'Catatan', t:'textarea'}
+  ], init, function(v){
+    v.geojson = JSON.stringify(ring);
+    var w = (S.warga||[]).filter(function(x){ return x.id === v.wargaId; })[0];
+    if(w){
+      v.wargaNama = w.nama;
+      if(!v.noRumah) v.noRumah = w.noRumah;
+      if(!v.blok)    v.blok    = w.blok;
+    }else{
+      v.wargaNama = '';
+    }
+    if(b){ v.id = b.id; mutate('bidang_update', v, {okMsg:'Bidang diperbarui.'}).then(render).catch(function(){}); }
+    else  { mutate('bidang_add', v, {okMsg:'Bidang tersimpan.'}).then(render).catch(function(){}); }
+  }, true);
+}
+
+function hapusBidang(id){
+  var b = (S.bidang||[]).filter(function(x){return x.id===id;})[0];
+  konfirmasi('Hapus bidang "'+((b&&(b.noRumah||b.kode))||id)+'" dari peta?', function(){
+    mutate('bidang_delete', {id:id, noRumah:b?b.noRumah:''}, {okMsg:'Bidang dihapus.'}).then(render).catch(function(){});
+  });
+}
+
+/* ---------- utilitas peta ---------- */
+function petaKeLokasiSaya(){
+  if(!navigator.geolocation){ toast('Perangkat ini tidak mendukung GPS.','err'); return; }
+  toast('Mencari posisi GPS…','info');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var la = pos.coords.latitude, ln = pos.coords.longitude;
+    if(MAP.inst){
+      MAP.inst.setView([la, ln], 19);
+      L.circleMarker([la, ln], {radius:8, color:'#000', weight:2, fillColor:'#3b82f6', fillOpacity:1})
+        .bindPopup('Posisi Anda<br><span style="font-size:11px">±'+Math.round(pos.coords.accuracy)+' m</span>')
+        .addTo(MAP.inst).openPopup();
+    }
+    toast('Posisi ditemukan (±'+Math.round(pos.coords.accuracy)+' m).','ok');
+  }, function(err){
+    toast('GPS gagal: '+pesanGeo(err),'err');
+  }, {enableHighAccuracy:true, timeout:15000, maximumAge:5000});
+}
+
+function simpanTampilanPeta(){
+  if(!MAP.inst){ toast('Peta belum siap.','err'); return; }
+  var c = MAP.inst.getCenter();
+  mutate('settings_update', {
+    petaLat:String(c.lat.toFixed(6)), petaLng:String(c.lng.toFixed(6)),
+    petaZoom:String(MAP.inst.getZoom()), petaBasemap:MAPCFG.base
+  }, {okMsg:'Tampilan awal peta disimpan.'}).catch(function(){});
+}
+
+function setKoordinatPos(id){
+  if(!navigator.geolocation){ toast('Perangkat ini tidak mendukung GPS.','err'); return; }
+  var p = S.patroli.filter(function(x){return x.id===id;})[0];
+  toast('Membaca GPS…','info');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    konfirmasi('Pindahkan pin pos "'+(p?p.namaPos:id)+'" ke posisi Anda sekarang '+
+      '('+pos.coords.latitude.toFixed(6)+', '+pos.coords.longitude.toFixed(6)+')?', function(){
+      mutate('patroli_checkin', {
+        id:id, lat:pos.coords.latitude, lng:pos.coords.longitude,
+        status:(p?p.status:'Lengkap - Aman'), petugasNama:(p?p.petugasNama:''), catatan:(p?p.catatan:'')
+      }, {okMsg:'Koordinat pos diperbarui.'}).then(render).catch(function(){});
+    });
+  }, function(err){ toast('GPS gagal: '+pesanGeo(err),'err'); },
+     {enableHighAccuracy:true, timeout:15000});
+}
+
+function pesanGeo(err){
+  if(!err) return 'tidak diketahui';
+  if(err.code === 1) return 'izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini di pengaturan peramban.';
+  if(err.code === 2) return 'posisi tidak tersedia. Pastikan GPS menyala dan Anda berada di area terbuka.';
+  if(err.code === 3) return 'waktu tunggu habis. Coba lagi di area yang lebih terbuka.';
+  return err.message || 'tidak diketahui';
+}
+
+/* ============================================================
+ * 8c. PELACAKAN PATROLI LANGSUNG
+ * ============================================================ */
+var PING_JEDA_MS = 12000;   // kirim maksimal tiap 12 detik
+var PING_JARAK_M = 12;      // atau bila sudah bergerak 12 meter
+var POLL_JEDA_MS = 10000;   // warga menarik data tiap 10 detik
+
+function mulaiBerbagiLokasi(){
+  if(!navigator.geolocation){ toast('Perangkat ini tidak mendukung GPS.','err'); return; }
+  if(!S.online){ toast('Berbagi lokasi memerlukan koneksi internet.','err'); return; }
+  if(LIVE.sesiId){ toast('Lokasi Anda sudah dibagikan.','info'); return; }
+
+  var namaAwal = (S.me && S.me.nama) ? S.me.nama : '';
+  formModal('Mulai Berbagi Lokasi Patroli', [
+    {k:'petugasNama', l:'Nama Petugas', t:'text', req:true},
+    {k:'kodePos', l:'Rute / Pos yang Dijaga', t:'text', ph:'Rute Blok A–C'},
+    {k:'catatan', l:'Catatan Shift', t:'text', ph:'Shift malam 22.00–04.00'}
+  ], {petugasNama:namaAwal}, function(v){
+    v.deviceId = deviceId();
+    callServer('patroli_sesi_start', v).then(function(sesi){
+      LIVE.sesiId = sesi.id;
+      LIVE.lastKirim = 0; LIVE.lastPos = null; LIVE.kirimGagal = 0;
+      simpanSesiLokal(sesi.id);
+      pasangWatch();
+      toast('Lokasi Anda mulai dibagikan ke warga.','ok');
+      render();
+    }).catch(function(err){ toast(err.message,'err'); });
+  });
+}
+
+function pasangWatch(){
+  if(LIVE.watch !== null && LIVE.watch !== undefined) return;
+  LIVE.watch = navigator.geolocation.watchPosition(function(pos){
+    kirimPing(pos);
+  }, function(err){
+    toast('GPS: '+pesanGeo(err),'err');
+    if(err.code === 1) hentikanBerbagiLokasi();
+  }, {enableHighAccuracy:true, timeout:20000, maximumAge:3000});
+}
+
+function kirimPing(pos){
+  if(!LIVE.sesiId) return;
+  var la = pos.coords.latitude, ln = pos.coords.longitude;
+  var kini = Date.now();
+  var jauh = LIVE.lastPos ? jarakMeter(LIVE.lastPos, [la, ln]) : 1e9;
+
+  if(kini - LIVE.lastKirim < PING_JEDA_MS && jauh < PING_JARAK_M) return;
+  if(!S.online) return;
+
+  LIVE.lastKirim = kini;
+  LIVE.lastPos = [la, ln];
+
+  callServer('patroli_ping', {
+    sesiId:LIVE.sesiId, deviceId:deviceId(),
+    lat:la, lng:ln,
+    akurasi:pos.coords.accuracy || 0,
+    kecepatan:(pos.coords.speed || 0) * 3.6
+  }).then(function(){
+    LIVE.kirimGagal = 0;
+    var inf = $('liveInfo');
+    if(inf) inf.textContent = 'Terkirim '+nowStamp()+' • ketelitian ±'+Math.round(pos.coords.accuracy||0)+
+      ' m • perangkat '+deviceId();
+  }).catch(function(err){
+    LIVE.kirimGagal++;
+    if(/sudah ditutup|tidak ditemukan/i.test(err.message)){
+      bersihkanSesiLokal();
+      toast('Sesi patroli telah ditutup dari sisi lain.','info');
+      render();
+      return;
+    }
+    if(LIVE.kirimGagal >= 4){
+      var inf2 = $('liveInfo');
+      if(inf2) inf2.textContent = 'Gagal mengirim posisi ('+LIVE.kirimGagal+'×) — memeriksa ulang koneksi…';
+    }
+  });
+}
+
+function hentikanBerbagiLokasi(){
+  var sid = LIVE.sesiId;
+  bersihkanSesiLokal();
+  render();
+  if(!sid) return;
+  callServer('patroli_sesi_stop', {id:sid, deviceId:deviceId()}).then(function(){
+    toast('Berbagi lokasi dihentikan.','ok');
+    return refresh();
+  }).catch(function(err){ toast(err.message,'err'); });
+}
+
+function simpanSesiLokal(id){
+  try{ localStorage.setItem('warganet_sesi', id); }catch(e){}
+}
+function bersihkanSesiLokal(){
+  if(LIVE.watch !== null && LIVE.watch !== undefined){
+    try{ navigator.geolocation.clearWatch(LIVE.watch); }catch(e){}
+  }
+  LIVE.watch = null; LIVE.sesiId = null; LIVE.lastPos = null; LIVE.lastKirim = 0;
+  try{ localStorage.removeItem('warganet_sesi'); }catch(e){}
+}
+
+/** Sambung kembali sesi yang masih aktif setelah aplikasi dibuka ulang. */
+function pulihkanSesiLokal(){
+  var sid = '';
+  try{ sid = localStorage.getItem('warganet_sesi') || ''; }catch(e){}
+  if(!sid) return;
+  var masih = (S.patroliSesi||[]).filter(function(x){ return x.id === sid && x.status === 'Aktif'; })[0];
+  if(!masih){ bersihkanSesiLokal(); return; }
+  LIVE.sesiId = sid;
+  pasangWatch();
+}
+
+/* ---------- sisi warga: tarik posisi berkala ---------- */
+function mulaiPollLive(){
+  hentikanPollLive();
+  if(!S.online) return;
+  LIVE.poll = setInterval(function(){
+    if(document.hidden || !S.online || S.tab !== 'patrol') return;
+    callServer('patroli_live', {jejak:150}).then(function(d){
+      S.patroliSesi = d.sesi || [];
+      gambarLive();
+      var el = $('liveList');
+      if(el) el.innerHTML = htmlDaftarLive();
+    }).catch(function(){});
+  }, POLL_JEDA_MS);
+}
+
+function hentikanPollLive(){
+  if(LIVE.poll){ clearInterval(LIVE.poll); LIVE.poll = null; }
+}
+
+function gambarLive(){
+  if(!MAP.layer.live) return;
+  MAP.layer.live.clearLayers();
+
+  (S.patroliSesi||[]).forEach(function(s){
+    var jejak = s.jejak || [];
+    if(!jejak.length) return;
+    var warna = s.warna || '#ef4444';
+    var akhir = jejak[jejak.length-1];
+
+    if(jejak.length > 1){
+      L.polyline(jejak.map(function(t){ return [t.lat, t.lng]; }),
+        {color:warna, weight:4, opacity:0.75}).addTo(MAP.layer.live);
+    }
+
+    if(akhir.akurasi){
+      L.circle([akhir.lat, akhir.lng], {
+        radius:Math.min(80, Math.max(6, akhir.akurasi)),
+        color:warna, weight:1, fillColor:warna, fillOpacity:0.12
+      }).addTo(MAP.layer.live);
+    }
+
+    var ic = L.divIcon({
+      className:'', iconSize:[34,34], iconAnchor:[17,17],
+      html:'<div class="mk-live" style="background:'+warna+'">🚶</div>'
+    });
+    L.marker([akhir.lat, akhir.lng], {icon:ic, zIndexOffset:900})
+      .bindTooltip(s.petugasNama || 'Petugas', {permanent:true, direction:'top', className:'lbl-bidang', offset:[0,-16]})
+      .bindPopup('<b>'+esc(s.petugasNama||'Petugas')+'</b>'+
+        '<div style="font-size:11.5px;margin-top:4px">'+esc(s.kodePos||'Patroli keliling')+'<br>'+
+        'Mulai: '+esc(s.mulai)+'<br>Posisi terakhir: '+esc(akhir.timestamp)+'<br>'+
+        'Ketelitian ±'+Math.round(akhir.akurasi||0)+' m'+
+        (akhir.kecepatan ? '<br>Kecepatan '+akhir.kecepatan.toFixed(1)+' km/j' : '')+
+        '<br>Titik jejak: '+jejak.length+'</div>')
+      .addTo(MAP.layer.live);
+  });
+}
+
+function htmlDaftarLive(){
+  var sesi = S.patroliSesi || [];
+  if(!sesi.length){
+    return '<div class="empty">Belum ada petugas yang berbagi lokasi. '+
+      'Petugas dapat menyalakannya lewat tombol <b>Mulai Berbagi Lokasi Saya</b> di atas.</div>';
+  }
+  return '<div class="grid g3">'+sesi.map(function(s){
+    var akhir = s.terakhir || (s.jejak && s.jejak.length ? s.jejak[s.jejak.length-1] : null);
+    var milikSaya = (s.deviceId === deviceId());
+    return '<div class="card flat" style="border-left:8px solid '+esc(s.warna||'#ef4444')+'">'+
+      '<div class="spread"><b style="font-size:13px">'+esc(s.petugasNama||'Petugas')+'</b>'+
+        '<span class="badge b-red">LIVE</span></div>'+
+      '<div class="sub" style="margin-top:6px">'+esc(s.kodePos||'Patroli keliling')+'<br>'+
+        'Mulai '+esc(s.mulai)+'<br>'+
+        (akhir ? 'Terakhir '+esc(akhir.timestamp)+' • ±'+Math.round(akhir.akurasi||0)+' m'
+               : 'Menunggu sinyal GPS pertama…')+
+        '<br>'+(s.titikCount||(s.jejak?s.jejak.length:0))+' titik jejak</div>'+
+      '<div class="row" style="margin-top:8px">'+
+        (akhir ? '<button class="btn sm" onclick="ikutiPetugas(\''+jsq(s.id)+'\')">Ikuti di Peta</button>' : '')+
+        (milikSaya
+          ? '<button class="btn sm red" onclick="hentikanBerbagiLokasi()">Hentikan</button>'
+          : (isPengurus() ? '<button class="btn sm red" onclick="hentikanSesiLain(\''+jsq(s.id)+'\',\''+jsq(s.petugasNama||'')+'\')">Tutup Sesi</button>' : ''))+
+      '</div></div>';
+  }).join('')+'</div>';
+}
+
+function ikutiPetugas(sesiId){
+  var s = (S.patroliSesi||[]).filter(function(x){ return x.id===sesiId; })[0];
+  var akhir = s && (s.terakhir || (s.jejak && s.jejak[s.jejak.length-1]));
+  if(!akhir){ toast('Posisi petugas belum tersedia.','info'); return; }
+  if(!MAP.inst){ toast('Peta belum siap.','info'); return; }
+  MAP.inst.setView([akhir.lat, akhir.lng], 19);
+  var el = $('petaRT'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function hentikanSesiLain(sesiId, nama){
+  konfirmasi('Tutup sesi berbagi lokasi milik "'+(nama||sesiId)+'"?', function(){
+    callServer('patroli_sesi_stop', {id:sesiId}).then(function(){
+      toast('Sesi ditutup.','ok');
+      return refresh();
+    }).catch(function(err){ toast(err.message,'err'); });
+  });
+}
+
 function formSOS(){
   formModal('Kirim Panggilan Darurat', [
     {k:'jenisDarurat',l:'Jenis Keadaan Darurat',t:'select',
@@ -1527,8 +2737,261 @@ function checkinPatroli(id){
   });
 }
 
+
 /* ============================================================
- * 9. VOTING DIGITAL
+ * 9. CCTV — tautan siaran yang dapat ditonton & dibagikan warga
+ * ============================================================ */
+var TIPE_CCTV = ['YouTube Live','HLS (.m3u8)','MJPEG / Snapshot','Halaman Web (iframe)','RTSP (butuh aplikasi)'];
+var HLS_CDN = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js';
+var _hlsP = null, _snapTimer = null;
+
+/** Hanya izinkan tautan http/https — cegah javascript: dan skema aneh lainnya. */
+function urlAman(u){
+  u = String(u||'').trim();
+  return /^https?:\/\//i.test(u) ? u : '';
+}
+
+function ytId(u){
+  u = String(u||'');
+  var m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|live\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  return m ? m[1] : '';
+}
+
+function viewCctv(){
+  var semua = S.cctv || [];
+  var list = isPengurus() ? semua : semua.filter(function(c){ return c.publik; });
+  var nyala = list.filter(function(c){ return c.status === 'Aktif'; }).length;
+
+  var h = hSection('📹','CCTV Lingkungan',
+    list.length+' kamera terdaftar • '+nyala+' sedang aktif'+
+    (isPengurus() ? ' • '+semua.filter(function(c){return !c.publik;}).length+' khusus pengurus' : ''),
+    isPengurus() ? '<button class="btn dark" onclick="formCctv()">+ Tambah Kamera</button>' : '');
+
+  if(!S.online){
+    h += '<div class="mapnote warn">⚡ Mode offline — siaran langsung tidak dapat diputar. '+
+         'Daftar kamera di bawah tetap tampil dari data tersimpan.</div>';
+  }
+
+  if(!list.length){
+    return h + '<div class="card"><div class="empty">'+
+      (isPengurus()
+        ? 'Belum ada kamera. Tekan “Tambah Kamera”, lalu tempelkan tautan siaran dari NVR/DVR atau kanal YouTube Live milik RT.'
+        : 'Pengurus belum membagikan tautan CCTV.')+
+      '</div></div>';
+  }
+
+  h += '<div class="grid g2">';
+  list.forEach(function(c){
+    var mati = c.status !== 'Aktif';
+    h += '<div class="camcard">'+
+      '<div class="camframe" id="cam_'+esc(c.id)+'">'+
+        '<span class="camtag'+(mati?' off':'')+'">'+(mati?'NONAKTIF':'● LIVE')+'</span>'+
+        (mati || !S.online
+          ? '<div class="camoff">'+(mati?'Kamera sedang dimatikan.':'Perlu koneksi internet untuk memutar siaran.')+'</div>'
+          : '<div class="camoff">Memuat siaran…</div>')+
+      '</div>'+
+      '<div class="cammeta">'+
+        '<div class="spread"><b style="font-size:13.5px">'+esc(c.nama)+'</b>'+
+          (c.publik?'<span class="badge b-green">Warga</span>':'<span class="badge b-gray">Pengurus</span>')+
+        '</div>'+
+        '<div class="sub" style="margin-top:4px">📍 '+esc(c.lokasi||'-')+' • '+esc(c.tipe)+pendingMark(c)+'</div>'+
+        (c.catatan?'<div class="sub" style="margin-top:6px">'+esc(c.catatan)+'</div>':'')+
+        '<div class="row" style="margin-top:10px;flex-wrap:wrap">'+
+          '<button class="btn sm" onclick="bagikanCctv(\''+jsq(c.id)+'\')">🔗 Bagikan</button>'+
+          (urlAman(c.url)?'<a class="btn sm" href="'+esc(urlAman(c.url))+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">↗ Tab Baru</a>':'')+
+          (c.lat&&c.lng?'<button class="btn sm" onclick="cctvKePeta(\''+jsq(c.id)+'\')">🗺️ Di Peta</button>':'')+
+          (isPengurus()
+            ? '<button class="btn sm blue" onclick="formCctv(\''+jsq(c.id)+'\')">Edit</button>'+
+              '<button class="btn sm red" onclick="hapusCctv(\''+jsq(c.id)+'\')">Hapus</button>'
+            : '')+
+        '</div>'+
+      '</div></div>';
+  });
+  h += '</div>';
+
+  h += '<div class="card" style="margin-top:12px;background:#f8fafc">'+
+    '<b style="font-size:12px">ℹ️ Catatan teknis pemasangan</b>'+
+    '<div class="sub" style="margin-top:6px;line-height:1.6">'+
+      '• <b>YouTube Live</b> paling mudah: buat siaran langsung tak terdaftar dari NVR, tempel tautannya di sini.<br>'+
+      '• <b>HLS (.m3u8)</b> untuk NVR/DVR yang sudah dipublikasikan ke internet lewat HTTPS.<br>'+
+      '• <b>MJPEG / Snapshot</b> menampilkan gambar diam yang disegarkan berkala — ringan untuk kuota.<br>'+
+      '• <b>RTSP</b> tidak dapat diputar langsung oleh peramban; perlu diubah dulu ke HLS, atau dibuka lewat aplikasi CCTV di HP.<br>'+
+      '• Kamera bertanda <b>Pengurus</b> hanya muncul setelah masuk mode pengurus.'+
+    '</div></div>';
+  return h;
+}
+
+/** Pasang pemutar setelah kartu-kartu CCTV berada di DOM. */
+function pasangCctv(){
+  if(_snapTimer){ clearInterval(_snapTimer); _snapTimer = null; }
+  if(!S.online) return;
+
+  var list = (S.cctv||[]).filter(function(c){
+    return (isPengurus() || c.publik) && c.status === 'Aktif' && urlAman(c.url);
+  });
+  if(!list.length) return;
+
+  var adaSnapshot = false;
+
+  list.forEach(function(c){
+    var box = $('cam_'+c.id);
+    if(!box) return;
+    var url = urlAman(c.url);
+    var tag = '<span class="camtag">● LIVE</span>';
+
+    if(c.tipe === 'YouTube Live'){
+      var id = ytId(url);
+      if(!id){ box.innerHTML = tag+'<div class="camoff">Tautan YouTube tidak dikenali.</div>'; return; }
+      box.innerHTML = tag+'<iframe src="https://www.youtube.com/embed/'+encodeURIComponent(id)+
+        '?rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" '+
+        'allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+
+    }else if(c.tipe === 'MJPEG / Snapshot'){
+      adaSnapshot = true;
+      box.innerHTML = tag+'<img id="snap_'+esc(c.id)+'" src="'+esc(url)+'" alt="'+esc(c.nama)+'" '+
+        'onerror="camPesan(\''+jsq(c.id)+'\',\'Gambar kamera tidak dapat dimuat.\',\'Pastikan alamat snapshot dapat diakses dari luar jaringan RT.\')">';
+
+    }else if(c.tipe === 'HLS (.m3u8)'){
+      box.innerHTML = tag+'<video id="vid_'+esc(c.id)+'" controls playsinline muted></video>';
+      pasangHls(c.id, url);
+
+    }else if(c.tipe === 'Halaman Web (iframe)'){
+      box.innerHTML = tag+'<iframe src="'+esc(url)+'" allowfullscreen loading="lazy" '+
+        'referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+
+    }else{
+      box.innerHTML = tag+'<div class="camoff">Aliran RTSP tidak dapat diputar di peramban.<br>'+
+        'Buka lewat aplikasi CCTV, atau ubah dulu ke HLS.</div>';
+    }
+  });
+
+  if(adaSnapshot){
+    _snapTimer = setInterval(function(){
+      if(document.hidden || S.tab !== 'cctv') return;
+      (S.cctv||[]).forEach(function(c){
+        if(c.tipe !== 'MJPEG / Snapshot') return;
+        var im = $('snap_'+c.id);
+        var u = urlAman(c.url);
+        if(im && u) im.src = u + (u.indexOf('?')>=0?'&':'?') + '_t=' + Date.now();
+      });
+    }, 5000);
+  }
+}
+
+/** Tampilkan pesan di dalam bingkai kamera tanpa menghilangkan label statusnya. */
+function camPesan(id, teks, sub){
+  var box = $('cam_'+id);
+  if(!box) return;
+  box.innerHTML = '<span class="camtag off">TIDAK TERSEDIA</span>'+
+    '<div class="camoff">'+esc(teks)+
+    (sub ? '<br><span style="font-size:11px;font-weight:600">'+esc(sub)+'</span>' : '')+'</div>';
+}
+
+function ensureHls(){
+  if(typeof Hls !== 'undefined') return Promise.resolve(Hls);
+  if(_hlsP) return _hlsP;
+  _hlsP = new Promise(function(resolve, reject){
+    var sc = document.createElement('script');
+    sc.src = HLS_CDN; sc.async = true;
+    sc.onload  = function(){ (typeof Hls !== 'undefined') ? resolve(Hls) : reject(new Error('hls.js tidak termuat.')); };
+    sc.onerror = function(){ _hlsP = null; reject(new Error('Pemutar HLS gagal dimuat.')); };
+    document.head.appendChild(sc);
+  });
+  return _hlsP;
+}
+
+function pasangHls(id, url){
+  var v = $('vid_'+id);
+  if(!v) return;
+
+  /* Safari & iOS memutar HLS secara bawaan */
+  if(v.canPlayType('application/vnd.apple.mpegurl')){
+    v.src = url;
+    v.play().catch(function(){});
+    return;
+  }
+  ensureHls().then(function(H){
+    if(!$('vid_'+id)) return;
+    if(!H.isSupported()){
+      camPesan(id, 'Peramban ini tidak mendukung HLS.',
+                   'Coba buka lewat Safari di iPhone, atau gunakan tautan YouTube Live.');
+      return;
+    }
+    var hls = new H({lowLatencyMode:true, backBufferLength:30});
+    hls.loadSource(url);
+    hls.attachMedia(v);
+    hls.on(H.Events.MANIFEST_PARSED, function(){ v.play().catch(function(){}); });
+    hls.on(H.Events.ERROR, function(e, data){
+      if(!data || !data.fatal) return;
+      try{ hls.destroy(); }catch(err){}
+      camPesan(id, 'Siaran tidak dapat dijangkau.',
+                   'Periksa apakah alamat HLS masih aktif dan dapat diakses publik lewat HTTPS.');
+    });
+  }).catch(function(err){
+    camPesan(id, err.message, 'Pemutar HLS diunduh dari internet — perlu koneksi saat pertama kali dipakai.');
+  });
+}
+
+function bagikanCctv(id){
+  var c = (S.cctv||[]).filter(function(x){ return x.id===id; })[0];
+  if(!c) return;
+  var url = urlAman(c.url);
+  var teks = 'CCTV '+c.nama+(c.lokasi?' — '+c.lokasi:'')+'\n'+url;
+
+  if(navigator.share){
+    navigator.share({title:'CCTV '+c.nama, text:'CCTV '+c.nama+(c.lokasi?' — '+c.lokasi:''), url:url})
+      .catch(function(){});
+    return;
+  }
+  openModal('Bagikan Tautan CCTV',
+    '<div class="card flat" style="background:#f8fafc"><b style="font-size:12.5px">'+esc(c.nama)+'</b>'+
+      '<div class="sub" style="margin-top:3px">'+esc(c.lokasi||'')+'</div></div>'+
+    '<textarea class="inp" id="shareBox" style="min-height:80px;font-size:12px">'+esc(teks)+'</textarea>'+
+    '<div class="sub">Salin lalu kirim lewat WhatsApp grup RT. Pastikan tautan memang boleh dilihat warga.</div>',
+    '<button class="btn" onclick="closeModal()">Tutup</button>'+
+    '<button class="btn dark" onclick="salinTeks(document.getElementById(\'shareBox\').value)">Salin Tautan</button>');
+}
+
+function cctvKePeta(id){
+  var c = (S.cctv||[]).filter(function(x){ return x.id===id; })[0];
+  if(!c || !c.lat || !c.lng){ toast('Kamera ini belum punya koordinat.','info'); return; }
+  MAPCFG.view = {lat:c.lat, lng:c.lng, zoom:19};
+  MAPCFG.show.cctv = 1;
+  go('patrol');
+}
+
+function formCctv(id){
+  if(!isPengurus()){ toast('Hanya pengurus yang dapat mengelola CCTV.','err'); return; }
+  var c = id ? (S.cctv||[]).filter(function(x){return x.id===id;})[0] : null;
+  var init = c ? JSON.parse(JSON.stringify(c)) : {tipe:'YouTube Live', status:'Aktif', publik:true};
+
+  formModal(c ? 'Edit Kamera — '+c.nama : 'Tambah Kamera CCTV', [
+    {k:'nama',   l:'Nama Kamera', t:'text', req:true, ph:'Portal Timur (Gerbang Utama)'},
+    {k:'lokasi', l:'Lokasi Pemasangan', t:'text', ph:'Pos Satpam Utama'},
+    {k:'tipe',   l:'Jenis Tautan', t:'select', opt:TIPE_CCTV},
+    {k:'url',    l:'URL / Tautan Siaran', t:'text', req:true,
+     ph:'https://…', help:'YouTube: tempel tautan siaran. HLS: alamat berakhiran .m3u8. Harus diawali https://'},
+    {k:'status', l:'Status', t:'select', opt:['Aktif','Nonaktif','Perbaikan']},
+    {k:'publik', l:'Boleh dilihat semua warga', t:'checkbox'},
+    {k:'lat',    l:'Lintang (Latitude)', t:'number', help:'Opsional — agar kamera muncul sebagai pin di peta.'},
+    {k:'lng',    l:'Bujur (Longitude)', t:'number'},
+    {k:'catatan',l:'Catatan', t:'textarea'}
+  ], init, function(v){
+    if(!urlAman(v.url)){ toast('URL harus diawali http:// atau https://','err'); return; }
+    if(c){ v.id = c.id; mutate('cctv_update', v, {okMsg:'Kamera diperbarui.'}).then(render).catch(function(){}); }
+    else  { mutate('cctv_add', v, {okMsg:'Kamera ditambahkan.'}).then(render).catch(function(){}); }
+  }, true);
+}
+
+function hapusCctv(id){
+  var c = (S.cctv||[]).filter(function(x){return x.id===id;})[0];
+  konfirmasi('Hapus kamera "'+((c&&c.nama)||id)+'" dari daftar?', function(){
+    mutate('cctv_delete', {id:id, nama:c?c.nama:''}, {okMsg:'Kamera dihapus.'}).then(render).catch(function(){});
+  });
+}
+
+/* ============================================================
+ * 10. VOTING DIGITAL
  * ============================================================ */
 function viewVoting(){
   var h = hSection('🗳️','Musyawarah & Voting Digital',
@@ -1641,7 +3104,7 @@ function viewPengumuman(){
   S.diskusi.slice().reverse().forEach(function(t){
     var bal = t.balasan || [];
     h += '<div class="thread"><div class="row" style="align-items:flex-start">'+
-      '<div class="avatar">'+esc(initials(t.pengarangNama))+'</div>'+
+      '<div class="ava">'+esc(initials(t.pengarangNama))+'</div>'+
       '<div style="flex:1"><b style="font-size:14px">'+esc(t.judul)+'</b>'+pendingMark(t)+
         '<div class="sub">'+esc(t.pengarangNama)+' • '+esc(t.pengarangBlok)+' • '+esc(t.timestamp)+'</div></div></div>'+
       '<div style="margin-top:8px;font-size:13px">'+nl2br(t.isi)+'</div>'+
@@ -1880,7 +3343,15 @@ function openSettings(){
       '<div><label class="f">Sub Judul / Nama Kompleks</label><input class="inp" id="setSub" value="'+esc(S.settings.appSubtitle)+'"></div>'+
       '<div><label class="f">Nama RT/RW</label><input class="inp" id="setRT" value="'+esc(S.settings.namaRT||'')+'"></div>'+
       '<div><label class="f">Nominal Iuran Standar (Rp)</label><input class="inp" id="setNom" type="number" value="'+esc(S.settings.iuranNominal)+'"></div>'+
-      '<div><label class="f">PIN Pengurus (4–8 digit)</label><input class="inp" id="setPin" value="'+esc(S.settings.managerPin)+'"></div>'
+      '<div><label class="f">PIN Pengurus (4–8 digit)</label><input class="inp" id="setPin" value="'+esc(S.settings.managerPin)+'"></div>'+
+      '<div class="card flat" style="background:#f8fafc"><b style="font-size:12px">🗺️ Tampilan Awal Peta</b>'+
+        '<div class="grid g3" style="margin-top:8px">'+
+          '<div><label class="f">Lintang</label><input class="inp" id="setLat" value="'+esc(S.settings.petaLat||'')+'" placeholder="-6.903400"></div>'+
+          '<div><label class="f">Bujur</label><input class="inp" id="setLng" value="'+esc(S.settings.petaLng||'')+'" placeholder="107.618100"></div>'+
+          '<div><label class="f">Perbesaran</label><input class="inp" id="setZoom" type="number" min="10" max="21" value="'+esc(S.settings.petaZoom||'18')+'"></div>'+
+        '</div>'+
+        '<div class="sub" style="margin-top:6px">Titik ini menjadi pusat peta saat aplikasi dibuka. Cara termudah: buka tab Patroli &amp; Peta, geser peta ke lingkungan RT, lalu tekan <b>📌 Simpan Tampilan</b>.</div>'+
+      '</div>'
       : '<div class="card flat b-gray"><div class="sub">Pengaturan aplikasi hanya dapat diubah oleh pengurus.</div></div>')+
     '<div class="row"><button class="btn" onclick="paksaMuatUlang()">🔄 Muat Ulang Data</button>'+
       '<button class="btn" onclick="flushOutbox()">📤 Kirim Antrian Offline</button>'+
@@ -1895,6 +3366,9 @@ function simpanSettings(){
       appTitle: $('setTitle').value, appSubtitle: $('setSub').value,
       namaRT: $('setRT').value, iuranNominal: $('setNom').value, managerPin: $('setPin').value
     };
+    if($('setLat'))  v.petaLat  = $('setLat').value;
+    if($('setLng'))  v.petaLng  = $('setLng').value;
+    if($('setZoom')) v.petaZoom = $('setZoom').value;
     closeModal();
     mutate('settings_update', v, {okMsg:'Pengaturan tersimpan.'}).then(render).catch(function(){});
     return;
@@ -1938,7 +3412,10 @@ function boot(){
     return;
   }
 
-  refresh().then(function(){ return flushOutbox(); }).catch(function(err){
+  refresh().then(function(){
+    pulihkanSesiLokal();
+    return flushOutbox();
+  }).catch(function(err){
     toast(S.warga.length ? 'Offline — menampilkan data tersimpan.' : err.message, S.warga.length?'info':'err');
   });
 
