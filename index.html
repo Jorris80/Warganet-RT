@@ -240,6 +240,15 @@ main{max-width:1200px;margin:0 auto;padding:14px}
   background:#f8fafc}
 .fotopick .ava{width:56px;height:56px}
 .fotohint{font-size:10.5px;color:var(--muted);margin-top:3px}
+.fotobtns{display:flex;gap:6px;flex-wrap:wrap}
+.fotobtn{display:inline-flex;align-items:center;gap:5px;border:2px solid #000;background:#fff;
+  padding:6px 10px;font-size:11.5px;font-weight:800;cursor:pointer;box-shadow:2px 2px 0 #000;
+  font-family:inherit;line-height:1.2}
+.fotobtn:active{transform:translate(2px,2px);box-shadow:none}
+.fotobtn.cam{background:var(--acc)}
+.fotobtn input{display:none}
+.fotoprev{max-width:100%;border:2px solid #000;display:block;margin-top:8px;cursor:zoom-in}
+.fotoprev.kecil{max-height:150px;width:auto}
 
 /* lightbox zoom */
 .lbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;
@@ -606,23 +615,35 @@ function ensureLeaflet(){
   return _leafletP;
 }
 
+/* Batas perbesaran peta.
+   Penyedia ubin hanya menyediakan gambar sampai level 17–19. Di atas itu
+   Leaflet membesarkan ubin yang sudah ada — gambar memang melunak, tetapi
+   pemetaan batas persil dan pemantauan posisi petugas jadi jauh lebih teliti. */
+var ZOOM_MAKS  = 22;   // batas atas peta
+var ZOOM_GPS   = 20;   // saat melompat ke posisi GPS
+var ZOOM_IKUT  = 20;   // saat mengikuti petugas secara otomatis
+var ZOOM_BIDANG = 21;  // saat menyorot satu bidang
+
 /** Definisi basemap. Citra satelit dari Esri World Imagery. */
 function basemapDefs(){
   return {
     jalan: {
       nama:'Peta Jalan (OSM)',
       url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      opt:{maxZoom:19, attribution:'&copy; Kontributor OpenStreetMap'}
+      opt:{maxZoom:ZOOM_MAKS, maxNativeZoom:19,
+           attribution:'&copy; Kontributor OpenStreetMap'}
     },
     satelit: {
       nama:'Citra Satelit',
       url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      opt:{maxZoom:19, maxNativeZoom:19, attribution:'Citra &copy; Esri, Maxar, Earthstar Geographics'}
+      opt:{maxZoom:ZOOM_MAKS, maxNativeZoom:19,
+           attribution:'Citra &copy; Esri, Maxar, Earthstar Geographics'}
     },
     topo: {
       nama:'Topografi',
       url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-      opt:{maxZoom:17, attribution:'&copy; OpenTopoMap, Kontributor OSM'}
+      opt:{maxZoom:ZOOM_MAKS, maxNativeZoom:17,
+           attribution:'&copy; OpenTopoMap, Kontributor OSM'}
     }
   };
 }
@@ -957,15 +978,33 @@ function formModal(title, fields, initial, onSubmit, wide){
            'style="width:56px;height:38px;border:2px solid #000;padding:2px;background:#fff">'+
            '<span class="sub">Warna isian bidang di peta</span></div>';
     } else if(f.t === 'foto'){
+      var besar = f.bukti ? ' fotoprev-bukti' : '';
       h += '<div class="fotopick">'+
-             '<div id="fp_prev_'+f.k+'">'+avatarHtml(initial.nama||'', v, '', false)+'</div>'+
-             '<div style="flex:1">'+
-               '<input type="file" id="fp_file_'+f.k+'" accept="image/*" style="font-size:11.5px;max-width:100%">'+
-               '<input type="hidden" id="f_'+f.k+'" value="'+esc(v)+'">'+
-               '<div class="fotohint" id="fp_hint_'+f.k+'">JPG/PNG. Otomatis diperkecil sebelum diunggah.</div>'+
+             '<div id="fp_prev_'+f.k+'">'+
+               (f.bukti
+                 ? (fotoSrc(v)
+                     ? '<img class="fotoprev kecil" src="'+esc(fotoSrc(v,800))+'" alt="bukti">'
+                     : '<div class="ava">🖼️</div>')
+                 : avatarHtml(initial.nama||'', v, '', false))+
              '</div>'+
-             (v?'<button type="button" class="btn sm red" onclick="hapusFotoField(\''+jsq(f.k)+'\')">Hapus</button>':'')+
-           '</div>';
+             '<div style="flex:1">'+
+               '<div class="fotobtns">'+
+                 '<label class="fotobtn cam">📷 Ambil Foto'+
+                   '<input type="file" id="fp_cam_'+f.k+'" accept="image/*" capture="environment">'+
+                 '</label>'+
+                 '<label class="fotobtn">🖼️ Pilih dari Galeri'+
+                   '<input type="file" id="fp_file_'+f.k+'" accept="image/*">'+
+                 '</label>'+
+                 (v?'<button type="button" class="fotobtn" onclick="hapusFotoField(\''+jsq(f.k)+'\')">✕ Hapus</button>':'')+
+               '</div>'+
+               '<input type="hidden" id="f_'+f.k+'" value="'+esc(v)+'">'+
+               '<div class="fotohint" id="fp_hint_'+f.k+'">'+
+                 (f.bukti
+                   ? 'Foto bukti membantu pengurus menilai laporan. Otomatis diperkecil sebelum dikirim.'
+                   : 'JPG/PNG. Otomatis diperkecil sebelum diunggah.')+
+               '</div>'+
+             '</div>'+
+           '</div>'+besar.replace(/./g,'');
     } else if(f.t === 'checkbox'){
       h += '<label class="row" style="cursor:pointer"><input type="checkbox" id="f_'+f.k+'"'+(v?' checked':'')+
            ' style="width:18px;height:18px"> <span style="font-weight:800;font-size:12px">'+esc(f.l)+'</span></label>';
@@ -979,17 +1018,28 @@ function formModal(title, fields, initial, onSubmit, wide){
     '<button class="btn" onclick="closeModal()">Batal</button>'+
     '<button class="btn dark" id="btnSimpanForm" onclick="submitForm()">Simpan</button>', wide);
 
-  /* pasang penangan unggah untuk setiap ruas bertipe foto */
+  /* Dua jalur masuk untuk tiap ruas foto: kamera langsung dan galeri.
+     Atribut capture="environment" membuat HP membuka kamera belakang seketika,
+     sementara tombol galeri sengaja tanpa capture agar pemilih berkas muncul. */
   fields.forEach(function(f){
     if(f.t !== 'foto') return;
-    var inp = $('fp_file_'+f.k);
-    if(inp) inp.onchange = function(){ unggahFotoField(f.k, this.files && this.files[0]); };
+    ['fp_cam_', 'fp_file_'].forEach(function(pfx){
+      var inp = $(pfx + f.k);
+      if(!inp) return;
+      inp.onchange = function(){
+        unggahFotoField(f.k, this.files && this.files[0], f);
+        this.value = '';       // izinkan memilih berkas sama dua kali berturut-turut
+      };
+    });
   });
 }
 
 /* ---------- unggah foto dari dalam formulir ---------- */
-function unggahFotoField(key, file){
+function unggahFotoField(key, file, f){
   if(!file) return;
+  f = f || {};
+  var maxPx = f.bukti ? 1280 : 640;
+  var mutu  = f.bukti ? 0.72 : 0.78;
   var hint = $('fp_hint_'+key), prev = $('fp_prev_'+key), tombol = $('btnSimpanForm');
   function pesan(t){ if(hint) hint.textContent = t; }
 
@@ -998,8 +1048,12 @@ function unggahFotoField(key, file){
   pesan('Memperkecil gambar…');
   if(tombol) tombol.disabled = true;
 
-  kecilkanGambar(file, 640, 0.78).then(function(dataUrl){
-    if(prev) prev.innerHTML = '<div class="ava"><img src="'+dataUrl+'" alt="pratinjau"></div>';
+  kecilkanGambar(file, maxPx, mutu).then(function(dataUrl){
+    if(prev){
+      prev.innerHTML = f.bukti
+        ? '<img class="fotoprev kecil" src="'+dataUrl+'" alt="pratinjau bukti">'
+        : '<div class="ava"><img src="'+dataUrl+'" alt="pratinjau"></div>';
+    }
     pesan('Mengunggah ke Google Drive…');
     return callServer('foto_upload', {dataUrl:dataUrl, nama:(_formCb && _formCb.nama) || 'foto'});
   }).then(function(res){
@@ -1017,7 +1071,7 @@ function unggahFotoField(key, file){
 
 function hapusFotoField(key){
   var el = $('f_'+key); if(el) el.value = '';
-  var prev = $('fp_prev_'+key); if(prev) prev.innerHTML = '<div class="ava">–</div>';
+  var prev = $('fp_prev_'+key); if(prev) prev.innerHTML = '<div class="ava">🖼️</div>';
   var hint = $('fp_hint_'+key); if(hint) hint.textContent = 'Foto dikosongkan. Tekan Simpan untuk menerapkan.';
 }
 
@@ -1473,12 +1527,18 @@ function viewOrganisasi(){
   h += '<div class="grid g3">';
   S.pengurus.forEach(function(p){
     h += '<div class="card"><div class="row" style="align-items:flex-start">'+
-      avatarHtml(p.nama, p.fotoUrl, 'lg')+
+      avatarHtml(p.nama, p.fotoUrl || (wargaPengurus(p)||{}).fotoUrl, 'lg')+
       '<div style="flex:1"><b style="font-size:13.5px">'+esc(p.nama)+'</b>'+pendingMark(p)+
         '<div><span class="badge b-yellow" style="margin-top:4px">'+esc(p.jabatan)+'</span></div></div></div>'+
       '<div class="sub" style="margin-top:10px;line-height:1.5">'+esc(p.tugasUtama)+'</div>'+
       '<div class="card flat" style="margin-top:10px;background:#f8fafc;font-size:11.5px">'+
-        '📍 '+esc(p.blok)+' '+esc(p.noRumah)+'<br>📞 '+esc(p.noHp)+'<br>✉️ '+esc(p.email||'-')+'<br>🗓️ '+esc(p.periode)+'</div>'+
+        '📍 '+esc(p.blok)+' '+esc(p.noRumah)+'<br>📞 '+esc(p.noHp)+'<br>✉️ '+esc(p.email||'-')+'<br>🗓️ '+esc(p.periode)+
+        (wargaPengurus(p)
+          ? '<br><span class="badge b-blue" style="margin-top:6px" title="Nama, alamat, kontak, dan foto mengikuti data warga secara otomatis">🔗 Tertaut data warga</span>'
+          : (isPengurus()
+              ? '<br><span class="badge b-gray" style="margin-top:6px" title="Diisi manual — tidak ikut berubah bila data warga diperbarui">✎ Diisi manual</span>'
+              : ''))+
+      '</div>'+
       '<div class="row" style="margin-top:10px;flex-wrap:wrap">'+
         (nomorTel(p.noHp)
           ? '<a class="btn sm" href="tel:'+esc(nomorTel(p.noHp))+'" style="text-decoration:none;color:inherit" '+
@@ -1498,6 +1558,12 @@ function viewOrganisasi(){
   h += '</div>';
   return h;
 }
+/** Data warga yang tertaut ke seorang pengurus, bila ada. */
+function wargaPengurus(p){
+  if(!p || !p.wargaId) return null;
+  return (S.warga||[]).filter(function(w){ return w.id === p.wargaId; })[0] || null;
+}
+
 /** Buka WhatsApp salah satu pengurus dari kartu struktur organisasi. */
 function waPengurus(id){
   var p = (S.pengurus||[]).filter(function(x){ return x.id === id; })[0];
@@ -1508,9 +1574,38 @@ function waPengurus(id){
              ' warga ' + (S.settings.namaRT||'RT') + '. Mohon izin bertanya:');
 }
 
+/**
+ * Pilihan warga untuk penautan pengurus. Warga yang sudah menjabat diberi
+ * keterangan agar tidak terdaftar dua kali tanpa disadari.
+ */
+function opsiWargaPengurus(kecualiId){
+  var dipakai = {};
+  (S.pengurus||[]).forEach(function(p){
+    if(p.wargaId && p.id !== kecualiId) dipakai[p.wargaId] = p.jabatan || 'pengurus';
+  });
+  var out = [{v:'', l:'— isi manual, tidak diambil dari data warga —'}];
+  (S.warga||[]).slice().sort(function(a,b){
+    return String(a.nama||'').localeCompare(String(b.nama||''));
+  }).forEach(function(w){
+    out.push({
+      v: w.id,
+      l: w.nama + ' — ' + (w.blok||'') + ' ' + (w.noRumah||'') +
+         (dipakai[w.id] ? '  (sudah menjabat ' + dipakai[w.id] + ')' : '')
+    });
+  });
+  return out;
+}
+
 function formPengurus(id){
-  var init = id ? S.pengurus.filter(function(p){return p.id===id;})[0] : {periode:'2024 - 2027'};
+  var init = id ? JSON.parse(JSON.stringify(S.pengurus.filter(function(p){return p.id===id;})[0]||{}))
+                : {periode:'2024 - 2027'};
+
   formModal(id?'Edit Pengurus':'Tambah Pengurus RT', [
+    {k:'wargaId', l:'Ambil dari Data Warga', t:'select', optv:opsiWargaPengurus(id),
+     onchange:'isiDariWarga(this.value)',
+     help:'Pilih warga untuk mengisi nama, alamat, kontak, dan foto secara otomatis — '+
+          'dan tetap ikut berubah bila data warganya diperbarui. Biarkan kosong untuk mengisi '+
+          'sendiri, misalnya petugas keamanan yang bukan penghuni.'},
     {k:'nama',l:'Nama Lengkap & Gelar',t:'text',req:true},
     {k:'fotoUrl',l:'Foto Profil',t:'foto',help:'Tampil pada bagan struktur pengurus. Ketuk foto untuk memperbesar.'},
     {k:'jabatan',l:'Jabatan',t:'text',req:true,ph:'Ketua RT / Bendahara RT / …'},
@@ -1524,6 +1619,33 @@ function formPengurus(id){
     if(id){ v.id=id; mutate('pengurus_update', v, {okMsg:'Data pengurus diperbarui.'}).then(render).catch(function(){}); }
     else   { mutate('pengurus_add', v, {okMsg:'Pengurus ditambahkan.'}).then(render).catch(function(){}); }
   }, true);
+}
+
+/** Salin data warga terpilih ke ruas-ruas formulir pengurus. */
+function isiDariWarga(wargaId){
+  var pesan = $('fp_hint_fotoUrl');
+
+  if(!wargaId){
+    if(pesan) pesan.textContent = 'Mode manual — isi sendiri seluruh ruas di bawah.';
+    return;
+  }
+  var w = (S.warga||[]).filter(function(x){ return x.id === wargaId; })[0];
+  if(!w) return;
+
+  [['nama', w.nama], ['blok', w.blok], ['noRumah', w.noRumah],
+   ['noHp', w.noHp], ['email', w.email]].forEach(function(pair){
+    var el = $('f_' + pair[0]);
+    if(el) el.value = pair[1] || '';
+  });
+
+  var ff = $('f_fotoUrl');
+  if(ff && !ff.value && w.fotoUrl) ff.value = w.fotoUrl;
+
+  var prev = $('fp_prev_fotoUrl');
+  if(prev) prev.innerHTML = avatarHtml(w.nama, (ff && ff.value) || w.fotoUrl, '', false);
+  if(pesan) pesan.textContent = 'Foto mengikuti data warga. Unggah di sini bila ingin foto berbeda.';
+
+  toast('Data ' + w.nama + ' disalin. Tinggal isi jabatan dan tugasnya.', 'info');
 }
 function hapusPengurus(id){
   var p = S.pengurus.filter(function(x){return x.id===id;})[0];
@@ -1895,6 +2017,12 @@ function viewPengaduan(){
         '<span class="badge b-violet">'+esc(p.kategori)+'</span>'+
         '<span class="badge '+scls+'">'+esc(p.status)+'</span></div></div>'+
       '<div style="margin-top:10px;font-size:13px">'+nl2br(p.deskripsi)+'</div>'+
+      (fotoSrc(p.fotoUrl)
+        ? '<div style="margin-top:10px"><img class="fotoprev kecil" src="'+esc(fotoSrc(p.fotoUrl,800))+'" '+
+          'alt="Foto bukti: '+esc(p.judul)+'" loading="lazy" title="Ketuk untuk memperbesar" '+
+          'onclick="zoomFoto(\''+jsq(p.fotoUrl)+'\',\''+jsq('Bukti: '+p.judul)+'\')" '+
+          'onerror="this.style.display=\'none\'"></div>'
+        : '')+
       (p.tanggapanPengurus ? '<div class="card flat" style="margin-top:10px;background:#dbeafe">'+
         '<b style="font-size:11.5px">💬 TANGGAPAN PENGURUS</b><div style="margin-top:4px;font-size:12.5px">'+
         nl2br(p.tanggapanPengurus)+'</div></div>' : '')+
@@ -1915,7 +2043,7 @@ function formPengaduan(){
     {k:'deskripsi',l:'Deskripsi Lengkap',t:'textarea',req:true},
     {k:'wargaNama',l:'Nama Pelapor',t:'text',req:true},
     {k:'blok',l:'Alamat / Blok',t:'text'},
-    {k:'fotoUrl',l:'Tautan Foto (opsional)',t:'text'}
+    {k:'fotoUrl',l:'Foto Bukti (opsional)',t:'foto',bukti:true}
   ], {levelUrgensi:'Sedang', wargaNama:(S.me?S.me.nama:''), blok:(S.me?(S.me.blok+' '+S.me.noRumah):'')},
   function(v){ mutate('pengaduan_add', v, {okMsg:'Laporan terkirim ke pengurus.'}).then(render).catch(function(){}); }, true);
 }
@@ -2030,6 +2158,11 @@ function viewPatrol(){
       chipLapisan('live','Petugas','Tampilkan/sembunyikan posisi petugas yang sedang berbagi lokasi beserta jejak rutenya')+
       chipLapisan('cctv','CCTV','Tampilkan/sembunyikan pin kamera CCTV')+
       chipLapisan('label','Label No. Rumah','Tampilkan/sembunyikan nomor rumah di tengah tiap bidang')+
+      '<button class="chip'+(MAPCFG.ikut?' on':'')+'" id="chipIkut" '+
+        'title="Peta mengikuti posisi Anda sendiri dan memperbesar otomatis selama berbagi lokasi aktif" '+
+        'onclick="toggleIkut()">'+(MAPCFG.ikut?'●':'○')+' Ikuti Posisi Saya</button>'+
+      '<button class="chip" title="Perbesar peta ke tingkat paling rinci" '+
+        'onclick="zoomMaks()">🔍 Zoom Maks</button>'+
       (isPengurus()
         ? '<button class="btn sm dark" id="btnGambar" onclick="gambarBidangMulai()">✏️ Gambar Bidang</button>'+
           '<button class="btn sm" onclick="simpanTampilanPeta()" title="Jadikan posisi & perbesaran peta saat ini sebagai tampilan awal">📌 Simpan Tampilan</button>'
@@ -2112,13 +2245,14 @@ function viewPatrol(){
 var MAPCFG = {
   base:'satelit',
   show:{bidang:1, pos:1, live:1, cctv:1, label:1},
-  view:null            // {lat,lng,zoom} — dipertahankan antar-render
+  view:null,           // {lat,lng,zoom} — dipertahankan antar-render
+  ikut:false           // ikuti posisi sendiri secara otomatis saat berbagi lokasi
 };
 
 function pusatAwal(){
   if(MAPCFG.view) return MAPCFG.view;
   var la = Number(S.settings.petaLat), ln = Number(S.settings.petaLng);
-  var zm = Number(S.settings.petaZoom) || 18;
+  var zm = Math.min(Number(S.settings.petaZoom) || 18, ZOOM_MAKS);
   if(!isFinite(la) || !isFinite(ln) || (la===0 && ln===0)){
     /* jatuhkan ke bidang atau pos pertama yang punya koordinat */
     var ref = (S.bidang||[]).map(function(b){ var r=parseRing(b.geojson); return r?pusatRing(r):null; })
@@ -2141,7 +2275,9 @@ function pasangPeta(){
     var v = pusatAwal();
 
     MAP.inst = L.map('petaRT', {
-      center:[v.lat, v.lng], zoom:v.zoom, zoomControl:true, attributionControl:true
+      center:[v.lat, v.lng], zoom:Math.min(v.zoom, ZOOM_MAKS),
+      zoomControl:true, attributionControl:true,
+      maxZoom:ZOOM_MAKS, zoomSnap:0.5, zoomDelta:0.5, wheelPxPerZoomLevel:80
     });
     MAP.siap = true; MAP.gagal = false;
 
@@ -2157,6 +2293,12 @@ function pasangPeta(){
     MAP.inst.on('moveend zoomend', function(){
       var c = MAP.inst.getCenter();
       MAPCFG.view = {lat:c.lat, lng:c.lng, zoom:MAP.inst.getZoom()};
+    });
+
+    /* Geseran manual mematikan mode ikut otomatis, supaya peta tidak
+       "melawan" pengguna yang sedang melihat area lain. */
+    MAP.inst.on('dragstart', function(){
+      if(MAPCFG.ikut){ MAPCFG.ikut = false; perbaruiTombolIkut(); }
     });
 
     gambarBidangSemua();
@@ -2313,7 +2455,7 @@ function zoomKeBidang(id){
   var ring = b && parseRing(b.geojson);
   if(!ring){ toast('Bidang ini belum punya geometri.','info'); return; }
   if(!MAP.inst){ toast('Peta belum siap.','info'); return; }
-  MAP.inst.fitBounds(L.polygon(ring).getBounds(), {maxZoom:20, padding:[40,40]});
+  MAP.inst.fitBounds(L.polygon(ring).getBounds(), {maxZoom:ZOOM_BIDANG, padding:[40,40]});
   var el = $('petaRT'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
   MAP.layer.bidang.eachLayer(function(l){
     if(l._bidangId === id) setTimeout(function(){ l.bindPopup(popupBidang(b)).openPopup(); }, 400);
@@ -2485,7 +2627,7 @@ function petaKeLokasiSaya(){
   navigator.geolocation.getCurrentPosition(function(pos){
     var la = pos.coords.latitude, ln = pos.coords.longitude;
     if(MAP.inst){
-      MAP.inst.setView([la, ln], 19);
+      MAP.inst.setView([la, ln], ZOOM_GPS);
       L.circleMarker([la, ln], {radius:8, color:'#000', weight:2, fillColor:'#3b82f6', fillOpacity:1})
         .bindPopup('Posisi Anda<br><span style="font-size:11px">±'+Math.round(pos.coords.accuracy)+' m</span>')
         .addTo(MAP.inst).openPopup();
@@ -2529,6 +2671,32 @@ function pesanGeo(err){
   return err.message || 'tidak diketahui';
 }
 
+/** Perbesar peta ke tingkat paling rinci pada titik yang sedang dilihat. */
+function zoomMaks(){
+  if(!MAP.inst){ toast('Peta belum siap.','err'); return; }
+  MAP.inst.setZoom(ZOOM_MAKS);
+  toast('Perbesaran maksimum. Di atas level 19 gambar ubin dibesarkan, jadi tampak melunak.','info');
+}
+
+function toggleIkut(){
+  MAPCFG.ikut = !MAPCFG.ikut;
+  perbaruiTombolIkut();
+  if(MAPCFG.ikut){
+    if(!LIVE.sesiId){
+      toast('Aktifkan “Mulai Berbagi Lokasi” dulu agar posisi Anda terbaca.','info');
+    }else if(LIVE.lastPos && MAP.inst){
+      MAP.inst.setView(LIVE.lastPos, Math.max(MAP.inst.getZoom(), ZOOM_IKUT));
+    }
+  }
+}
+
+function perbaruiTombolIkut(){
+  var el = $('chipIkut');
+  if(!el) return;
+  el.className = 'chip' + (MAPCFG.ikut ? ' on' : '');
+  el.textContent = (MAPCFG.ikut ? '●' : '○') + ' Ikuti Posisi Saya';
+}
+
 /* ============================================================
  * 8c. PELACAKAN PATROLI LANGSUNG
  * ============================================================ */
@@ -2552,8 +2720,9 @@ function mulaiBerbagiLokasi(){
       LIVE.sesiId = sesi.id;
       LIVE.lastKirim = 0; LIVE.lastPos = null; LIVE.kirimGagal = 0;
       simpanSesiLokal(sesi.id);
+      MAPCFG.ikut = true;          // saat patroli, peta mengikuti petugas
       pasangWatch();
-      toast('Lokasi Anda mulai dibagikan ke warga.','ok');
+      toast('Lokasi Anda mulai dibagikan. Peta akan mengikuti posisi Anda.','ok');
       render();
     }).catch(function(err){ toast(err.message,'err'); });
   });
@@ -2580,6 +2749,11 @@ function kirimPing(pos){
 
   LIVE.lastKirim = kini;
   LIVE.lastPos = [la, ln];
+
+  /* Ikuti posisi sendiri: geser peta dan perbesar bila masih terlalu jauh. */
+  if(MAPCFG.ikut && MAP.inst && S.tab === 'patrol'){
+    MAP.inst.setView([la, ln], Math.max(MAP.inst.getZoom(), ZOOM_IKUT), {animate:true});
+  }
 
   callServer('patroli_ping', {
     sesiId:LIVE.sesiId, deviceId:deviceId(),
@@ -2727,7 +2901,7 @@ function ikutiPetugas(sesiId){
   var akhir = s && (s.terakhir || (s.jejak && s.jejak[s.jejak.length-1]));
   if(!akhir){ toast('Posisi petugas belum tersedia.','info'); return; }
   if(!MAP.inst){ toast('Peta belum siap.','info'); return; }
-  MAP.inst.setView([akhir.lat, akhir.lng], 19);
+  MAP.inst.setView([akhir.lat, akhir.lng], Math.max(MAP.inst.getZoom(), ZOOM_IKUT));
   var el = $('petaRT'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
@@ -3086,7 +3260,7 @@ function bagikanCctv(id){
 function cctvKePeta(id){
   var c = (S.cctv||[]).filter(function(x){ return x.id===id; })[0];
   if(!c || !c.lat || !c.lng){ toast('Kamera ini belum punya koordinat.','info'); return; }
-  MAPCFG.view = {lat:c.lat, lng:c.lng, zoom:19};
+  MAPCFG.view = {lat:c.lat, lng:c.lng, zoom:ZOOM_GPS};
   MAPCFG.show.cctv = 1;
   go('patrol');
 }
