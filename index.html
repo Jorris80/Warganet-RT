@@ -1479,14 +1479,35 @@ function viewOrganisasi(){
       '<div class="sub" style="margin-top:10px;line-height:1.5">'+esc(p.tugasUtama)+'</div>'+
       '<div class="card flat" style="margin-top:10px;background:#f8fafc;font-size:11.5px">'+
         '📍 '+esc(p.blok)+' '+esc(p.noRumah)+'<br>📞 '+esc(p.noHp)+'<br>✉️ '+esc(p.email||'-')+'<br>🗓️ '+esc(p.periode)+'</div>'+
-      (isPengurus()? '<div class="row" style="margin-top:10px">'+
-        '<button class="btn sm blue" onclick="formPengurus(\''+p.id+'\')">Edit</button>'+
-        '<button class="btn sm red" onclick="hapusPengurus(\''+p.id+'\')">Hapus</button></div>':'')+
+      '<div class="row" style="margin-top:10px;flex-wrap:wrap">'+
+        (nomorTel(p.noHp)
+          ? '<a class="btn sm" href="tel:'+esc(nomorTel(p.noHp))+'" style="text-decoration:none;color:inherit" '+
+            'title="Telepon '+esc(p.nama)+'">📞 Telepon</a>'
+          : '')+
+        (nomorWa(p.noHp)
+          ? '<button class="btn sm green" onclick="waPengurus(\''+jsq(p.id)+'\')" '+
+            'title="Chat WhatsApp '+esc(p.nama)+'">💬 WhatsApp</button>'
+          : '')+
+        (isPengurus()
+          ? '<button class="btn sm blue" onclick="formPengurus(\''+jsq(p.id)+'\')">Edit</button>'+
+            '<button class="btn sm red" onclick="hapusPengurus(\''+jsq(p.id)+'\')">Hapus</button>'
+          : '')+
+      '</div>'+
       '</div>';
   });
   h += '</div>';
   return h;
 }
+/** Buka WhatsApp salah satu pengurus dari kartu struktur organisasi. */
+function waPengurus(id){
+  var p = (S.pengurus||[]).filter(function(x){ return x.id === id; })[0];
+  var wa = p ? nomorWa(p.noHp) : '';
+  if(!wa){ toast('Nomor HP pengurus ini belum diisi.','err'); return; }
+  var pengirim = (S.me && S.me.nama) ? S.me.nama : 'warga';
+  bukaWa(wa, 'Assalamualaikum ' + (p.nama||'') + ', saya ' + pengirim +
+             ' warga ' + (S.settings.namaRT||'RT') + '. Mohon izin bertanya:');
+}
+
 function formPengurus(id){
   var init = id ? S.pengurus.filter(function(p){return p.id===id;})[0] : {periode:'2024 - 2027'};
   formModal(id?'Edit Pengurus':'Tambah Pengurus RT', [
@@ -1952,10 +1973,10 @@ function viewPatrol(){
     '<div class="sub" style="margin-bottom:10px">Tekan hanya dalam keadaan darurat sungguhan. Pengurus &amp; petugas keamanan akan langsung menerima notifikasi.</div>'+
     '<button class="sosbtn" onclick="formSOS()">🚨 KIRIM PANGGILAN DARURAT</button>'+
     '<div class="grid g4" style="margin-top:12px">'+
-      '<a class="btn" href="tel:110" style="justify-content:center;text-decoration:none;color:inherit">📞 Polisi 110</a>'+
-      '<a class="btn" href="tel:113" style="justify-content:center;text-decoration:none;color:inherit">🔥 Damkar 113</a>'+
-      '<a class="btn" href="tel:118" style="justify-content:center;text-decoration:none;color:inherit">🚑 Ambulans 118</a>'+
-      '<a class="btn" href="tel:'+esc(String((S.pengurus[0]&&S.pengurus[0].noHp)||'').replace(/\D/g,''))+'" style="justify-content:center;text-decoration:none;color:inherit">🏠 Ketua RT</a>'+
+      tombolTelepon('📞', 'Polisi', '110')+
+      tombolTelepon('🔥', 'Damkar', '113')+
+      tombolTelepon('🚑', 'Ambulans', '118')+
+      tombolKetuaRT()+
     '</div></div>';
 
   if(aktif.length){
@@ -2004,16 +2025,19 @@ function viewPatrol(){
           return '<option value="'+k+'"'+(MAPCFG.base===k?' selected':'')+'>'+esc(basemapDefs()[k].nama)+'</option>';
         }).join('')+
       '</select>'+
-      '<button class="chip'+(MAPCFG.show.bidang?' on':'')+'" onclick="toggleLapisan(\'bidang\')">Bidang</button>'+
-      '<button class="chip'+(MAPCFG.show.pos?' on':'')+'" onclick="toggleLapisan(\'pos\')">Pos Jaga</button>'+
-      '<button class="chip'+(MAPCFG.show.live?' on':'')+'" onclick="toggleLapisan(\'live\')">Petugas</button>'+
-      '<button class="chip'+(MAPCFG.show.cctv?' on':'')+'" onclick="toggleLapisan(\'cctv\')">CCTV</button>'+
-      '<button class="chip'+(MAPCFG.show.label?' on':'')+'" onclick="toggleLapisan(\'label\')">Label No. Rumah</button>'+
+      chipLapisan('bidang','Bidang','Tampilkan/sembunyikan poligon persil warga')+
+      chipLapisan('pos','Pos Jaga','Tampilkan/sembunyikan pin pos ronda — ketuk pinnya di peta untuk melihat status pos dan check-in')+
+      chipLapisan('live','Petugas','Tampilkan/sembunyikan posisi petugas yang sedang berbagi lokasi beserta jejak rutenya')+
+      chipLapisan('cctv','CCTV','Tampilkan/sembunyikan pin kamera CCTV')+
+      chipLapisan('label','Label No. Rumah','Tampilkan/sembunyikan nomor rumah di tengah tiap bidang')+
       (isPengurus()
         ? '<button class="btn sm dark" id="btnGambar" onclick="gambarBidangMulai()">✏️ Gambar Bidang</button>'+
           '<button class="btn sm" onclick="simpanTampilanPeta()" title="Jadikan posisi & perbesaran peta saat ini sebagai tampilan awal">📌 Simpan Tampilan</button>'
         : '')+
     '</div>'+
+    '<div class="sub" style="margin-bottom:8px">Tombol di atas hanya menyalakan dan mematikan '+
+      '<b>lapisan tampilan</b> peta — tidak mengubah data apa pun. Matikan lapisan yang sedang '+
+      'tidak diperlukan agar peta lebih lega.</div>'+
     '<div id="drawBar"></div>'+
     '<div class="wnmap tall" id="petaRT"><div class="empty" style="padding:24px">Menyiapkan peta…</div></div>'+
     '<div class="legend">'+
@@ -2183,15 +2207,26 @@ function gantiBasemap(k){
   terapkanBasemap();
 }
 
+/** Satu tombol lapisan. Tanda ● berarti sedang tampil, ○ berarti disembunyikan. */
+function chipLapisan(k, label, judul){
+  var on = !!MAPCFG.show[k];
+  return '<button class="chip'+(on?' on':'')+'" id="chip_'+k+'" '+
+    'title="'+esc(judul)+'" aria-pressed="'+(on?'true':'false')+'" '+
+    'onclick="toggleLapisan(\''+jsq(k)+'\')">'+(on?'●':'○')+' '+esc(label)+'</button>';
+}
+
 function toggleLapisan(k){
   MAPCFG.show[k] = MAPCFG.show[k] ? 0 : 1;
   if(k === 'label'){ gambarBidangSemua(); }
   terapkanVisibilitas();
+
   /* perbarui tampilan tombol tanpa membangun ulang peta */
-  var chips = document.querySelectorAll('.maptools .chip');
-  var urut = ['bidang','pos','live','cctv','label'];
-  for(var i=0;i<chips.length && i<urut.length;i++){
-    chips[i].className = 'chip'+(MAPCFG.show[urut[i]]?' on':'');
+  var el = $('chip_'+k);
+  if(el){
+    var on = !!MAPCFG.show[k];
+    el.className = 'chip'+(on?' on':'');
+    el.setAttribute('aria-pressed', on?'true':'false');
+    el.textContent = (on?'●':'○') + ' ' + el.textContent.replace(/^[●○]\s*/, '');
   }
 }
 
@@ -2703,6 +2738,102 @@ function hentikanSesiLain(sesiId, nama){
       return refresh();
     }).catch(function(err){ toast(err.message,'err'); });
   });
+}
+
+/* ============================================================
+ * KONTAK DARURAT — panggilan telepon & WhatsApp
+ * ============================================================ */
+
+/**
+ * Ubah nomor Indonesia menjadi format internasional tanpa tanda baca,
+ * seperti yang diminta wa.me. Contoh: 0812-3456-7890 → 6281234567890.
+ */
+function nomorWa(no){
+  var d = String(no||'').replace(/[^\d+]/g, '').replace(/^\+/, '');
+  if(!d) return '';
+  if(d.indexOf('62') === 0)  return d;
+  if(d.indexOf('0')  === 0)  return '62' + d.slice(1);
+  if(d.indexOf('8')  === 0)  return '62' + d;   // ditulis tanpa nol di depan
+  return d;
+}
+
+/** Nomor siap dipakai pada tautan tel:. Spasi dan tanda hubung dibuang. */
+function nomorTel(no){
+  return String(no||'').replace(/[^\d+*#]/g, '');
+}
+
+/** Cari Ketua RT dari struktur pengurus — "Wakil Ketua" sengaja dikecualikan. */
+function ketuaRT(){
+  var list = S.pengurus || [];
+  var k = list.filter(function(p){
+    return /ketua/i.test(p.jabatan||'') && !/wakil/i.test(p.jabatan||'');
+  })[0];
+  return k || list.filter(function(p){ return /ketua/i.test(p.jabatan||''); })[0] || list[0] || null;
+}
+
+/** Tombol panggilan ke nomor layanan darurat. */
+function tombolTelepon(ikon, nama, nomor){
+  return '<a class="btn" href="tel:'+esc(nomorTel(nomor))+'" '+
+    'title="Panggil '+esc(nama)+' di nomor '+esc(nomor)+'" '+
+    'style="justify-content:center;text-decoration:none;color:inherit">'+
+    ikon+' '+esc(nama)+' '+esc(nomor)+'</a>';
+}
+
+/**
+ * Tombol menuju WhatsApp Ketua RT, nomornya diambil langsung dari
+ * struktur pengurus. Bila belum diisi, tombol dinonaktifkan dengan
+ * keterangan yang jelas alih-alih membuka tautan rusak.
+ */
+function tombolKetuaRT(){
+  var k = ketuaRT();
+  var wa = k ? nomorWa(k.noHp) : '';
+  if(!wa){
+    return '<button class="btn" disabled title="Nomor HP Ketua RT belum diisi pada Struktur Pengurus" '+
+      'style="justify-content:center">🏠 Ketua RT —</button>';
+  }
+  return '<button class="btn green" onclick="waKetuaRT()" '+
+    'title="Chat WhatsApp '+esc(k.nama)+' ('+esc(k.noHp)+')" '+
+    'style="justify-content:center">💬 WA Ketua RT</button>';
+}
+
+/** Buka percakapan WhatsApp dengan Ketua RT, lengkap dengan pesan awal. */
+function waKetuaRT(){
+  var k = ketuaRT();
+  var wa = k ? nomorWa(k.noHp) : '';
+  if(!wa){
+    toast('Nomor HP Ketua RT belum diisi di Struktur Pengurus.','err');
+    return;
+  }
+  var pengirim = (S.me && S.me.nama) ? S.me.nama : '';
+  var alamat = (S.me && S.me.blok) ? (S.me.blok+' '+(S.me.noRumah||'')).trim() : '';
+  var pesan = 'Assalamualaikum Pak/Bu ' + (k.nama||'Ketua RT') + ', saya ' +
+              (pengirim || 'warga') + (alamat ? ' dari ' + alamat : '') +
+              '. Mohon izin menyampaikan:';
+  bukaWa(wa, pesan);
+}
+
+/** Buka tautan WhatsApp di tab baru; bila diblokir, sediakan salinan tautannya. */
+function bukaWa(nomor, pesan){
+  var url = 'https://wa.me/' + nomor + (pesan ? '?text=' + encodeURIComponent(pesan) : '');
+
+  /* Jangan pakai fitur 'noopener' di sini: window.open akan selalu
+     mengembalikan null sehingga jendela cadangan muncul walau WhatsApp
+     sebenarnya sudah terbuka. Rujukan opener diputus setelahnya. */
+  var w = window.open(url, '_blank');
+  if(w){
+    try{ w.opener = null; }catch(e){}
+    return;
+  }
+
+  {
+    openModal('Hubungi lewat WhatsApp',
+      '<div class="sub">Peramban memblokir pembukaan tab baru. Salin tautan berikut, '+
+      'lalu tempel di peramban atau buka langsung nomornya di WhatsApp.</div>'+
+      '<textarea class="inp" id="waBox" style="min-height:70px;font-size:12px">'+esc(url)+'</textarea>'+
+      '<div class="sub">Nomor: <b>+'+esc(nomor)+'</b></div>',
+      '<button class="btn" onclick="closeModal()">Tutup</button>'+
+      '<button class="btn dark" onclick="salinTeks(document.getElementById(\'waBox\').value)">Salin Tautan</button>');
+  }
 }
 
 function formSOS(){
@@ -3238,26 +3369,100 @@ function toggleRole(){
   }
   openModal('Masuk Mode Pengurus',
     '<div class="sub">Masukkan PIN pengurus untuk membuka akses pengelolaan data.</div>'+
-    '<input class="inp" id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="••••" '+
-      'style="text-align:center;font-size:26px;letter-spacing:12px;font-weight:900">'+
+    '<form id="pinForm" autocomplete="off" onsubmit="return false">'+
+      '<input class="inp" id="pinInput" type="password" inputmode="numeric" enterkeyhint="go" '+
+        'maxlength="8" placeholder="••••" autocomplete="off" '+
+        'style="text-align:center;font-size:26px;letter-spacing:12px;font-weight:900">'+
+    '</form>'+
     '<div class="sub">PIN awal bawaan sistem: <b>1234</b> — segera ganti lewat ⚙️ Pengaturan.</div>',
     '<button class="btn" onclick="closeModal()">Batal</button>'+
     '<button class="btn dark" onclick="cekPin()">Masuk</button>');
-  setTimeout(function(){ var e=$('pinInput'); if(e){ e.focus();
-    e.addEventListener('keydown', function(ev){ if(ev.key==='Enter') cekPin(); }); } },80);
+
+  setTimeout(pasangPinInput, 80);
 }
+
+/**
+ * Tiga jalur pengiriman PIN, karena tidak ada satu pun yang jalan di semua perangkat:
+ *   1. submit form  — papan ketik Android menampilkan tombol "Go"/kirim;
+ *   2. tombol Enter — papan ketik fisik di komputer;
+ *   3. kirim otomatis saat jumlah digit sudah pas — papan ketik angka iPhone
+ *      memang tidak memiliki tombol Enter sama sekali.
+ */
+function pasangPinInput(){
+  var el = $('pinInput'), fm = $('pinForm');
+  if(!el) return;
+  el.focus();
+
+  if(fm){
+    fm.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      cekPin();
+    });
+  }
+
+  el.addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter' || ev.keyCode === 13){
+      ev.preventDefault();
+      cekPin();
+    }
+  });
+
+  var panjang = String(S.settings.managerPin || '1234').length;
+  if(panjang >= 4 && panjang <= 8){
+    el.addEventListener('input', function(){
+      var isi = String(el.value || '');
+      if(isi.length === panjang){
+        clearTimeout(el._pinTimer);
+        el._pinTimer = setTimeout(cekPin, 260);
+      }
+    });
+  }
+}
+var _pinSibuk = false;
+
 function cekPin(){
-  var pin = $('pinInput') ? $('pinInput').value : '';
+  var el = $('pinInput');
+  if(!el || _pinSibuk) return;
+  var pin = el.value;
+  if(!String(pin).length) return;
+
+  _pinSibuk = true;
+  var tombol = document.querySelector('.mf .btn.dark');
+  if(tombol) tombol.disabled = true;
+
+  function selesai(){
+    _pinSibuk = false;
+    var t = document.querySelector('.mf .btn.dark');
+    if(t) t.disabled = false;
+    var e2 = $('pinInput');
+    if(e2){ e2.value = ''; e2.focus(); }
+  }
+
   if(!S.online){
     if(String(pin) === String(S.settings.managerPin||'1234')){
-      S.role='pengurus'; saveRole(); closeModal(); render(); toast('Mode pengurus aktif (offline).','ok');
-    } else toast('PIN salah.','err');
+      _pinSibuk = false;
+      S.role='pengurus'; saveRole(); closeModal(); render();
+      toast('Mode pengurus aktif (offline).','ok');
+    }else{
+      selesai();
+      toast('PIN salah.','err');
+    }
     return;
   }
+
   callServer('verify_pin', {pin:pin, aktorNama:(S.me?S.me.nama:'Pengguna')}).then(function(r){
-    if(r.valid){ S.role='pengurus'; saveRole(); closeModal(); render(); toast('Mode pengurus aktif.','ok'); }
-    else toast('PIN salah.','err');
-  }).catch(function(e){ toast(e.message,'err'); });
+    if(r.valid){
+      _pinSibuk = false;
+      S.role='pengurus'; saveRole(); closeModal(); render();
+      toast('Mode pengurus aktif.','ok');
+    }else{
+      selesai();
+      toast('PIN salah.','err');
+    }
+  }).catch(function(e){
+    selesai();
+    toast(e.message,'err');
+  });
 }
 
 function openKartu(){
