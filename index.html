@@ -475,6 +475,42 @@ function tempId(pfx){ return pfx+'-LOKAL-'+Date.now()+'-'+Math.floor(Math.random
 function isPengurus(){ return S.role === 'pengurus'; }
 
 /* ============================================================
+ * KARTU DIGITAL — penyimpanan lokal per perangkat
+ *
+ * Token QR tidak lagi ikut dikirim ke semua perangkat lewat bootstrap.
+ * Setelah PIN warga terverifikasi di server, hasilnya disimpan di HP itu
+ * saja, supaya kartu tetap bisa ditunjukkan di pos jaga tanpa sinyal.
+ * ============================================================ */
+var LS_KARTU = 'warganet_kartu';
+
+function kartuTersimpan(){
+  try{ return JSON.parse(localStorage.getItem(LS_KARTU) || '{}'); }
+  catch(e){ return {}; }
+}
+
+function simpanKartu(data){
+  if(!data || !data.id) return;
+  try{
+    var semua = kartuTersimpan();
+    semua[data.id] = data;
+    localStorage.setItem(LS_KARTU, JSON.stringify(semua));
+  }catch(e){}
+}
+
+function ambilKartu(id){
+  var k = kartuTersimpan();
+  return k[id] || null;
+}
+
+function lupakanKartu(id){
+  try{
+    var semua = kartuTersimpan();
+    delete semua[id];
+    localStorage.setItem(LS_KARTU, JSON.stringify(semua));
+  }catch(e){}
+}
+
+/* ============================================================
  * FOTO PROFIL
  * ============================================================ */
 
@@ -827,7 +863,8 @@ function applyLocal(action, p){
 var ONLINE_ONLY = {verify_pin:1, iuran_generate:1, iuran_reminder:1,
                    ai_financial_summary:1, ai_complaint:1, ai_assistant:1, bootstrap:1,
                    foto_upload:1, patroli_sesi_start:1, patroli_sesi_stop:1,
-                   patroli_ping:1, patroli_live:1};
+                   patroli_ping:1, patroli_live:1,
+                   kartu_buka:1, kartu_pin_ubah:1, kartu_pin_reset:1, kartu_pin_status:1};
 
 /**
  * Titik masuk tunggal semua mutasi.
@@ -1201,9 +1238,13 @@ function submitForm(){
     out[f.k] = v;
   });
   if(miss){ toast('Wajib diisi: '+miss, 'err'); return; }
+
+  /* Formulir ditutup SETELAH penangannya berjalan. Bila penangan
+     mengembalikan false — artinya ada isian yang belum sah — jendela
+     dibiarkan terbuka supaya pengguna tidak kehilangan ketikannya. */
   var cb = _formCb.cb;
-  closeModal();
-  cb(out);
+  var hasil = cb(out);
+  if(hasil !== false) closeModal();
 }
 
 function konfirmasi(pesan, aksi){
@@ -1441,10 +1482,12 @@ function viewWarga(){
         (w.twoFactorEnabled?' <span class="badge b-yellow">2FA</span>':'')+'</td>'+
       '<td><span class="pointpill">'+num(w.points)+'</span></td>'+
       '<td><div class="row">'+
-        '<button class="btn sm" onclick="kartuWarga(\''+w.id+'\')">Kartu</button>'+
+        '<button class="btn sm" onclick="kartuWarga(\''+jsq(w.id)+'\')">Kartu</button>'+
         (isPengurus()?
-          '<button class="btn sm blue" onclick="formWarga(\''+w.id+'\')">Edit</button>'+
-          '<button class="btn sm red" onclick="hapusWarga(\''+w.id+'\')">Hapus</button>':'')+
+          '<button class="btn sm blue" onclick="formWarga(\''+jsq(w.id)+'\')">Edit</button>'+
+          '<button class="btn sm" title="Kembalikan PIN kartu ke 1234 bila warga lupa PIN-nya" '+
+            'onclick="resetPinKartu(\''+jsq(w.id)+'\')">🔑 Reset PIN</button>'+
+          '<button class="btn sm red" onclick="hapusWarga(\''+jsq(w.id)+'\')">Hapus</button>':'')+
       '</div></td></tr>';
   });
   h += '</tbody></table></div>';
@@ -1484,9 +1527,167 @@ function hapusWarga(id){
     mutate('warga_delete', {id:id, nama:w?w.nama:''}, {okMsg:'Data warga dihapus.'}).then(render).catch(function(){});
   });
 }
+/**
+ * Pintu masuk kartu digital.
+ *
+ * Pengurus dibukakan dengan PIN pengurus (dipakai saat verifikasi di pos jaga).
+ * Warga wajib memasukkan PIN kartunya sendiri; setelah berhasil, kartu itu
+ * tersimpan di perangkat ini sehingga dapat dibuka lagi tanpa sinyal.
+ */
 function kartuWarga(id){
   var w = S.warga.filter(function(x){return x.id===id;})[0];
-  if(!w) return;
+  if(!w){ toast('Data warga tidak ditemukan.','err'); return; }
+
+  if(isPengurus()){ bukaKartuPengurus(id); return; }
+
+  var simpan = ambilKartu(id);
+  if(simpan){ tampilkanKartu(simpan); return; }
+
+  mintaPinKartu(w);
+}
+
+/** Jendela PIN untuk warga. */
+function mintaPinKartu(w){
+  openModal('Buka Kartu — '+esc(w.nama),
+    '<div class="sub">Masukkan PIN kartu milik <b>'+esc(w.nama)+'</b>. '+
+      'PIN ini menjaga agar kartu Anda tidak dapat dibuka warga lain.</div>'+
+    '<form id="kpForm" autocomplete="off" onsubmit="return false">'+
+      '<input class="inp" id="kpInput" type="password" inputmode="numeric" enterkeyhint="go" '+
+        'maxlength="8" placeholder="••••" autocomplete="off" '+
+        'style="text-align:center;font-size:26px;letter-spacing:12px;font-weight:900">'+
+    '</form>'+
+    '<div class="sub">PIN bawaan untuk warga baru adalah <b>1234</b>. '+
+      'Setelah kartu terbuka, gantilah lewat tombol <b>Ganti PIN</b> di dalam kartu.</div>'+
+    '<div class="sub" id="kpPesan" style="color:var(--red);font-weight:800"></div>',
+    '<button class="btn" onclick="closeModal()">Batal</button>'+
+    '<button class="btn dark" onclick="cekPinKartu(\''+jsq(w.id)+'\')">Buka Kartu</button>');
+
+  setTimeout(function(){ pasangPinKartu(w.id); }, 80);
+}
+
+/* Tiga jalur pengiriman, sama seperti PIN pengurus: submit form untuk papan
+   ketik Android, tombol Enter untuk komputer, dan pengiriman otomatis saat
+   empat digit terpenuhi karena papan ketik angka iPhone tidak punya Enter. */
+function pasangPinKartu(id){
+  var el = $('kpInput'), fm = $('kpForm');
+  if(!el) return;
+  el.focus();
+  if(fm) fm.addEventListener('submit', function(ev){ ev.preventDefault(); cekPinKartu(id); });
+  el.addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter' || ev.keyCode === 13){ ev.preventDefault(); cekPinKartu(id); }
+  });
+  el.addEventListener('input', function(){
+    if(String(el.value||'').length === 4){
+      clearTimeout(el._t);
+      el._t = setTimeout(function(){ cekPinKartu(id); }, 260);
+    }
+  });
+}
+
+var _kartuSibuk = false;
+
+function cekPinKartu(id){
+  var el = $('kpInput');
+  if(!el || _kartuSibuk) return;
+  var pin = String(el.value||'');
+  if(!pin.length) return;
+
+  if(!S.online){
+    setPesanKartu('Membuka kartu pertama kali memerlukan koneksi internet. '+
+                  'Setelah itu kartu tersimpan di HP ini dan bisa dibuka luring.');
+    return;
+  }
+
+  _kartuSibuk = true;
+  var tombol = document.querySelector('.mf .btn.dark');
+  if(tombol) tombol.disabled = true;
+
+  callServer('kartu_buka', {wargaId:id, pin:pin}).then(function(data){
+    _kartuSibuk = false;
+    simpanKartu(data);
+    closeModal();
+    tampilkanKartu(data);
+    if(data.pinBawaan){
+      toast('Kartu terbuka. Anda masih memakai PIN bawaan — sebaiknya segera diganti.','info');
+    }
+  }).catch(function(err){
+    _kartuSibuk = false;
+    var t = document.querySelector('.mf .btn.dark');
+    if(t) t.disabled = false;
+    var e2 = $('kpInput');
+    if(e2){ e2.value=''; e2.focus(); }
+    setPesanKartu(err.message);
+  });
+}
+
+function setPesanKartu(teks){
+  var p = $('kpPesan');
+  if(p) p.textContent = teks;
+  else toast(teks,'err');
+}
+
+/** Pengurus membuka kartu siapa pun memakai PIN pengurus. */
+function bukaKartuPengurus(id){
+  if(!S.online){
+    var simpan = ambilKartu(id);
+    if(simpan){ tampilkanKartu(simpan); return; }
+    toast('Membuka kartu warga lain memerlukan koneksi.','err');
+    return;
+  }
+  mintaPinPengurusLalu(function(pinP){
+    callServer('kartu_buka', {wargaId:id, pinPengurus:pinP}).then(function(data){
+      closeModal();
+      tampilkanKartu(data);
+    }).catch(function(err){ toast(err.message,'err'); });
+  }, 'Buka Kartu Warga');
+}
+
+/**
+ * PIN pengurus tidak disimpan permanen. Bila sudah dimasukkan pada sesi ini,
+ * langsung dipakai; bila belum, ditanyakan sekali lalu diingat di memori saja.
+ */
+var _pinPengurusSesi = '';
+
+function mintaPinPengurusLalu(lanjut, judul){
+  if(_pinPengurusSesi){ lanjut(_pinPengurusSesi); return; }
+  openModal(judul || 'Konfirmasi PIN Pengurus',
+    '<div class="sub">Masukkan PIN pengurus untuk melanjutkan. '+
+      'PIN hanya disimpan sementara selama aplikasi terbuka.</div>'+
+    '<form id="ppForm" autocomplete="off" onsubmit="return false">'+
+      '<input class="inp" id="ppInput" type="password" inputmode="numeric" enterkeyhint="go" '+
+        'maxlength="8" placeholder="••••" autocomplete="off" '+
+        'style="text-align:center;font-size:26px;letter-spacing:12px;font-weight:900">'+
+    '</form>',
+    '<button class="btn" onclick="closeModal()">Batal</button>'+
+    '<button class="btn dark" onclick="kirimPinPengurus()">Lanjut</button>');
+
+  _lanjutPinPengurus = lanjut;
+  setTimeout(function(){
+    var el = $('ppInput'), fm = $('ppForm');
+    if(!el) return;
+    el.focus();
+    if(fm) fm.addEventListener('submit', function(ev){ ev.preventDefault(); kirimPinPengurus(); });
+    el.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter' || ev.keyCode === 13){ ev.preventDefault(); kirimPinPengurus(); }
+    });
+  }, 80);
+}
+
+var _lanjutPinPengurus = null;
+
+function kirimPinPengurus(){
+  var el = $('ppInput');
+  if(!el) return;
+  var pin = String(el.value||'');
+  if(!pin.length) return;
+  _pinPengurusSesi = pin;
+  var f = _lanjutPinPengurus;
+  _lanjutPinPengurus = null;
+  if(f) f(pin);
+}
+
+/** Tampilkan kartu dari data yang sudah terverifikasi. */
+function tampilkanKartu(w){
   var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(w.qrCodeToken||w.id);
   openModal('Kartu Digital Warga',
     '<div class="card flat" style="background:#111;color:#fff;text-align:center;border-color:#000">'+
@@ -1508,10 +1709,75 @@ function kartuWarga(id){
         '<div style="font-size:20px;font-weight:900">'+(w.twoFactorEnabled?'AKTIF':'NONAKTIF')+'</div>'+
         '<div style="font-size:10px;font-weight:900">VERIFIKASI 2 LANGKAH</div></div>'+
     '</div>'+
+    (w.pinBawaan
+      ? '<div class="card flat" style="background:#fee2e2;border-color:var(--red)">'+
+        '<b style="font-size:12px">⚠️ Masih memakai PIN bawaan 1234</b>'+
+        '<div class="sub" style="margin-top:4px">Selama PIN masih 1234, warga lain yang menebaknya '+
+        'dapat membuka kartu Anda. Tekan <b>Ganti PIN</b> di bawah untuk menggantinya.</div></div>'
+      : '')+
     '<div class="card flat" style="background:#f8fafc"><b style="font-size:12px">Cara pakai</b>'+
       '<div class="sub" style="margin-top:4px">Tunjukkan QR ini ke petugas pos satpam untuk verifikasi identitas saat masuk portal, meminjam aset RT, atau mengambil surat pengantar.</div></div>',
     '<button class="btn" onclick="closeModal()">Tutup</button>'+
-    (isPengurus()?'<button class="btn dark" onclick="closeModal();formWarga(\''+w.id+'\')">Edit Data</button>':''));
+    (w.dibukaOleh === 'pengurus'
+      ? '<button class="btn dark" onclick="closeModal();formWarga(\''+jsq(w.id)+'\')">Edit Data</button>'
+      : '<button class="btn '+(w.pinBawaan?'red':'dark')+'" onclick="formGantiPinKartu(\''+jsq(w.id)+'\')">🔑 Ganti PIN</button>'));
+}
+
+/* ---------- ganti PIN kartu oleh warga sendiri ---------- */
+function formGantiPinKartu(id){
+  var w = S.warga.filter(function(x){return x.id===id;})[0] || ambilKartu(id) || {id:id};
+  formModal('Ganti PIN Kartu — '+(w.nama||''), [
+    {k:'pinLama', l:'PIN Sekarang', t:'text', req:true, ph:'PIN bawaan: 1234'},
+    {k:'pinBaru', l:'PIN Baru (4–8 angka)', t:'text', req:true},
+    {k:'pinUlang', l:'Ulangi PIN Baru', t:'text', req:true}
+  ], {}, function(v){
+    if(String(v.pinBaru) !== String(v.pinUlang)){
+      toast('PIN baru dan ulangannya tidak sama.','err');
+      return false;                 // jendela tetap terbuka
+    }
+    if(!/^\d{4,8}$/.test(String(v.pinBaru))){
+      toast('PIN harus 4 sampai 8 angka.','err');
+      return false;
+    }
+    if(String(v.pinBaru) === '1234'){
+      toast('Jangan memakai PIN bawaan 1234. Pilih angka lain.','err');
+      return false;
+    }
+    if(/^(\d)\1+$/.test(String(v.pinBaru))){
+      toast('PIN tidak boleh angka yang sama semua, misalnya 1111.','err');
+      return false;
+    }
+
+    callServer('kartu_pin_ubah', {wargaId:id, pinLama:v.pinLama, pinBaru:v.pinBaru})
+      .then(function(){
+        closeModal();
+        lupakanKartu(id);           // paksa buka ulang dengan PIN baru
+        toast('PIN kartu berhasil diganti. Silakan buka kartu dengan PIN baru.','ok');
+      })
+      .catch(function(err){
+        toast(err.message,'err');
+        var el = $('f_pinLama'); if(el){ el.value=''; el.focus(); }
+      });
+    return false;                   // ditutup sendiri setelah server menjawab
+  });
+}
+
+/* ---------- reset PIN oleh pengurus ---------- */
+function resetPinKartu(id){
+  var w = S.warga.filter(function(x){return x.id===id;})[0];
+  if(!w) return;
+  konfirmasi('Kembalikan PIN kartu "'+w.nama+'" ke bawaan 1234? '+
+             'Pakai ini bila warga lupa PIN-nya.', function(){
+    mintaPinPengurusLalu(function(pinP){
+      callServer('kartu_pin_reset', {wargaId:id, pinPengurus:pinP, aktorNama:(S.me?S.me.nama:'Pengurus')})
+        .then(function(){
+          closeModal();
+          lupakanKartu(id);
+          toast('PIN kartu '+w.nama+' kembali ke 1234. Mintalah warga segera menggantinya.','ok');
+        })
+        .catch(function(err){ toast(err.message,'err'); });
+    }, 'Reset PIN Kartu');
+  });
 }
 
 /* ============================================================
@@ -3282,7 +3548,7 @@ function formCctv(id){
     {k:'lng',    l:'Bujur (Longitude)', t:'number'},
     {k:'catatan',l:'Catatan', t:'textarea'}
   ], init, function(v){
-    if(!urlAman(v.url)){ toast('URL harus diawali http:// atau https://','err'); return; }
+    if(!urlAman(v.url)){ toast('URL harus diawali http:// atau https://','err'); return false; }
     if(c){ v.id = c.id; mutate('cctv_update', v, {okMsg:'Kamera diperbarui.'}).then(render).catch(function(){}); }
     else  { mutate('cctv_add', v, {okMsg:'Kamera ditambahkan.'}).then(render).catch(function(){}); }
   }, true);
@@ -3647,6 +3913,10 @@ function openKartu(){
     '<div><label class="f">Pilih Identitas Warga (perangkat ini)</label>'+
       '<select class="inp" id="selMe">'+opts+'</select>'+
       '<div class="sub" style="margin-top:4px">Identitas ini dipakai sebagai penanda pelapor, pemilih voting, dan pencatat aktivitas.</div></div>'+
+    '<div class="card flat" style="background:#fef9c3"><b style="font-size:12px">🔑 Kartu dilindungi PIN</b>'+
+      '<div class="sub" style="margin-top:4px">Membuka kartu digital memerlukan PIN milik warga yang bersangkutan, '+
+      'sehingga tidak dapat dibuka warga lain. PIN bawaan untuk warga baru adalah <b>1234</b> dan sebaiknya segera diganti '+
+      'lewat tombol Ganti PIN di dalam kartu. Lupa PIN? Mintalah pengurus mengembalikannya ke bawaan.</div></div>'+
     '<div class="card flat" style="background:#f8fafc"><b style="font-size:12px">🔐 Verifikasi 2 Langkah (2FA)</b>'+
       '<div class="sub" style="margin-top:4px">Saat 2FA aktif, pengurus akan meminta konfirmasi tambahan lewat WhatsApp/telepon '+
       'sebelum menyetujui perubahan data sensitif atau pencairan dana kas.</div></div>',
