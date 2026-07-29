@@ -389,7 +389,7 @@ var S = {
             petaLat:'-6.9034',petaLng:'107.6181',petaZoom:'18',petaBasemap:'satelit'},
   warga:[],pengurus:[],iuran:[],kas:[],aset:[],pengaduan:[],voting:[],
   pengumuman:[],diskusi:[],patroli:[],panic:[],logs:[],
-  bidang:[], cctv:[], patroliSesi:[],
+  bidang:[], cctv:[], patroliSesi:[], anggota:[],
   aiEnabled:false, me:null, outbox:[], aiChat:[]
 };
 
@@ -420,7 +420,7 @@ function saveCache(){
       settings:S.settings,warga:S.warga,pengurus:S.pengurus,iuran:S.iuran,kas:S.kas,
       aset:S.aset,pengaduan:S.pengaduan,voting:S.voting,pengumuman:S.pengumuman,
       diskusi:S.diskusi,patroli:S.patroli,panic:S.panic,logs:S.logs,aiEnabled:S.aiEnabled,
-      bidang:S.bidang,cctv:S.cctv
+      bidang:S.bidang,cctv:S.cctv,anggota:S.anggota
     }));
   }catch(e){}
 }
@@ -432,7 +432,7 @@ function applyBootstrap(d, fromCache){
   if(!d) return;
   ['settings','warga','pengurus','iuran','kas','aset','pengaduan','voting',
    'pengumuman','diskusi','patroli','panic','logs',
-   'bidang','cctv','patroliSesi'].forEach(function(k){
+   'bidang','cctv','patroliSesi','anggota'].forEach(function(k){
     if(d[k] !== undefined) S[k] = d[k];
   });
   if(d.aiEnabled !== undefined) S.aiEnabled = d.aiEnabled;
@@ -735,6 +735,9 @@ var LOCAL_MAP = {
   diskusi_update:   {coll:'diskusi',    op:'upd'},
   diskusi_delete:   {coll:'diskusi',    op:'del'},
   patroli_checkin:  {coll:'patroli',    op:'upd'},
+  anggota_add:      {coll:'anggota',    op:'add',  pfx:'AGT'},
+  anggota_update:   {coll:'anggota',    op:'upd'},
+  anggota_delete:   {coll:'anggota',    op:'del'},
   bidang_add:       {coll:'bidang',     op:'add',  pfx:'BDG'},
   bidang_update:    {coll:'bidang',     op:'upd'},
   bidang_delete:    {coll:'bidang',     op:'del'},
@@ -1475,7 +1478,8 @@ function viewWarga(){
   list.forEach(function(w){
     h += '<tr><td><div class="row">'+avatarHtml(w.nama, w.fotoUrl)+'<div>'+
         '<b>'+esc(w.nama)+'</b>'+pendingMark(w)+'<div class="sub">NIK '+esc(maskNik(w.nik))+'</div></div></div></td>'+
-      '<td>'+esc(w.blok)+' '+esc(w.noRumah)+'<div class="sub">'+esc(w.statusHunian)+' • '+num(w.jumlahAnggota)+' jiwa</div></td>'+
+      '<td>'+esc(w.blok)+' '+esc(w.noRumah)+'<div class="sub">'+esc(w.statusHunian)+' • '+
+        num(jumlahJiwa(w))+' jiwa</div></td>'+
       '<td>'+esc(w.noHp)+'<div class="sub">'+esc(w.email||'-')+'</div></td>'+
       '<td><span class="badge '+(w.statusAkun==='Active'?'b-green':w.statusAkun==='Guest'?'b-violet':'b-gray')+'">'+esc(w.statusAkun||'-')+'</span>'+
         (w.isVerified?' <span class="badge b-blue">✓ Verified</span>':'')+
@@ -1483,6 +1487,8 @@ function viewWarga(){
       '<td><span class="pointpill">'+num(w.points)+'</span></td>'+
       '<td><div class="row">'+
         '<button class="btn sm" onclick="kartuWarga(\''+jsq(w.id)+'\')">Kartu</button>'+
+        '<button class="btn sm" onclick="daftarAnggota(\''+jsq(w.id)+'\')" '+
+          'title="Daftar jiwa yang tinggal di rumah ini">👪 Anggota ('+anggotaDari(w.id).length+')</button>'+
         (isPengurus()?
           '<button class="btn sm blue" onclick="formWarga(\''+jsq(w.id)+'\')">Edit</button>'+
           '<button class="btn sm" title="Kembalikan PIN kartu ke 1234 bila warga lupa PIN-nya" '+
@@ -1509,7 +1515,8 @@ function wargaFields(){
     {k:'statusHunian',l:'Status Hunian',t:'select',opt:['Pemilik','Pengontrak']},
     {k:'statusWarga',l:'Status Warga',t:'select',opt:['Tetap','Kontrak']},
     {k:'statusAkun',l:'Status Akun',t:'select',opt:['Active','Inactive','Guest']},
-    {k:'jumlahAnggota',l:'Jumlah Anggota Keluarga',t:'number'},
+    {k:'nik',l:'NIK Kepala Keluarga',t:'text',ph:'16 angka',
+     help:'Tampil tersamar demi privasi. Kosongkan bila tidak ingin mengubahnya.'},
     {k:'isVerified',l:'Sudah diverifikasi pengurus',t:'checkbox'},
     {k:'twoFactorEnabled',l:'Aktifkan 2FA',t:'checkbox'}
   ];
@@ -1527,6 +1534,203 @@ function hapusWarga(id){
     mutate('warga_delete', {id:id, nama:w?w.nama:''}, {okMsg:'Data warga dihapus.'}).then(render).catch(function(){});
   });
 }
+
+/* ============================================================
+ * ANGGOTA KELUARGA — jiwa yang menginduk pada satu kepala keluarga
+ * ============================================================ */
+
+var HUBUNGAN = ['Istri', 'Suami', 'Anak', 'Menantu', 'Cucu', 'Orang Tua', 'Mertua',
+                'Famili Lain', 'Pembantu', 'Lainnya'];
+var STATUS_TINGGAL = ['Tinggal di Sini', 'Merantau / Kos', 'Sementara', 'Sudah Pindah'];
+
+function anggotaDari(wargaId){
+  return (S.anggota||[]).filter(function(a){ return a.wargaId === wargaId; });
+}
+
+/** Jumlah jiwa = kepala keluarga + anggotanya. */
+function jumlahJiwa(w){
+  return anggotaDari(w.id).length + 1;
+}
+
+function umurDari(tgl){
+  if(!tgl) return '';
+  var d = new Date(tgl);
+  if(isNaN(d.getTime())) return '';
+  var kini = new Date();
+  var th = kini.getFullYear() - d.getFullYear();
+  var m = kini.getMonth() - d.getMonth();
+  if(m < 0 || (m === 0 && kini.getDate() < d.getDate())) th--;
+  if(th < 0 || th > 130) return '';
+  return th + ' th';
+}
+
+function ikonKelamin(jk){
+  if(/laki/i.test(jk||'')) return '♂';
+  if(/perempuan|wanita/i.test(jk||'')) return '♀';
+  return '•';
+}
+
+/** Jendela daftar anggota satu keluarga. */
+function daftarAnggota(wargaId){
+  var w = S.warga.filter(function(x){ return x.id === wargaId; })[0];
+  if(!w){ toast('Data warga tidak ditemukan.','err'); return; }
+  openModal('Anggota Keluarga — '+esc(w.nama), isiDaftarAnggota(wargaId),
+    '<button class="btn" onclick="closeModal()">Tutup</button>'+
+    (isPengurus()
+      ? '<button class="btn dark" onclick="formAnggota(\'' + jsq(wargaId) + '\')">+ Tambah Anggota</button>'
+      : ''), true);
+}
+
+function isiDaftarAnggota(wargaId){
+  var w = S.warga.filter(function(x){ return x.id === wargaId; })[0] || {};
+  var list = anggotaDari(wargaId);
+
+  var h = '<div class="card flat" style="background:#111;color:#fff">'+
+    '<div class="row" style="align-items:center">'+
+      avatarHtml(w.nama, w.fotoUrl, 'lg')+
+      '<div style="flex:1"><b style="font-size:14px">'+esc(w.nama)+'</b>'+
+        '<div class="sub" style="color:#cbd5e1">Kepala Keluarga • '+esc(w.blok||'')+' '+esc(w.noRumah||'')+'</div>'+
+        '<div class="sub" style="color:#cbd5e1">NIK '+esc(w.nik||'-')+' • '+esc(w.noHp||'-')+'</div></div>'+
+      '<div style="text-align:right"><div style="font-size:24px;font-weight:900">'+(list.length+1)+'</div>'+
+        '<div style="font-size:9.5px;font-weight:900;letter-spacing:.5px">JIWA</div></div>'+
+    '</div></div>';
+
+  if(!list.length){
+    return h + '<div class="empty">Belum ada anggota keluarga yang didata. '+
+      (isPengurus()
+        ? 'Tekan “Tambah Anggota” untuk mendaftarkan istri, anak, orang tua, atau penghuni lain.'
+        : 'Hubungi pengurus RT bila data keluarga Anda perlu dilengkapi.')+'</div>';
+  }
+
+  /* ringkasan komposisi */
+  var lk = list.filter(function(a){ return /laki/i.test(a.jenisKelamin||''); }).length;
+  var pr = list.filter(function(a){ return /perempuan|wanita/i.test(a.jenisKelamin||''); }).length;
+  var luar = list.filter(function(a){ return a.statusTinggal && a.statusTinggal !== 'Tinggal di Sini'; }).length;
+  h += '<div class="row" style="flex-wrap:wrap;gap:6px">'+
+    '<span class="badge b-blue">♂ '+lk+' laki-laki</span>'+
+    '<span class="badge b-violet">♀ '+pr+' perempuan</span>'+
+    (luar ? '<span class="badge b-yellow">'+luar+' tidak menetap</span>' : '')+
+  '</div>';
+
+  h += '<div class="stack">';
+  list.forEach(function(a){
+    var umur = umurDari(a.tanggalLahir);
+    h += '<div class="card flat"><div class="row" style="align-items:flex-start">'+
+      avatarHtml(a.nama, a.fotoUrl, 'lg')+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="spread" style="gap:6px"><b style="font-size:13px">'+esc(a.nama)+'</b>'+
+          '<span class="badge b-yellow">'+esc(a.hubungan||'Lainnya')+'</span></div>'+
+        '<div class="sub" style="margin-top:3px">'+
+          ikonKelamin(a.jenisKelamin)+' '+esc(a.jenisKelamin||'-')+
+          (umur ? ' • '+esc(umur) : '')+
+          (a.golonganDarah ? ' • Gol. '+esc(a.golonganDarah) : '')+
+        '</div>'+
+        '<div class="sub">NIK '+esc(a.nik||'-')+'</div>'+
+        (a.tempatLahir || a.tanggalLahir
+          ? '<div class="sub">'+esc(a.tempatLahir||'')+(a.tanggalLahir?', '+esc(a.tanggalLahir):'')+'</div>' : '')+
+        (a.pekerjaan || a.pendidikan
+          ? '<div class="sub">'+esc(a.pekerjaan||'-')+(a.pendidikan?' • '+esc(a.pendidikan):'')+'</div>' : '')+
+        (a.statusPerkawinan ? '<div class="sub">'+esc(a.statusPerkawinan)+'</div>' : '')+
+        (a.statusTinggal && a.statusTinggal !== 'Tinggal di Sini'
+          ? '<div><span class="badge b-gray" style="margin-top:4px">'+esc(a.statusTinggal)+'</span></div>' : '')+
+        (a.keterangan ? '<div class="sub" style="margin-top:4px">'+esc(a.keterangan)+'</div>' : '')+
+        pendingMark(a)+
+        '<div class="row" style="margin-top:8px;flex-wrap:wrap">'+
+          (nomorTel(a.noHp)
+            ? '<a class="btn sm" href="tel:'+esc(nomorTel(a.noHp))+'" style="text-decoration:none;color:inherit">📞 Telepon</a>'
+            : '')+
+          (nomorWa(a.noHp)
+            ? '<button class="btn sm green" onclick="waAnggota(\'' + jsq(a.id) + '\')">💬 WhatsApp</button>'
+            : '')+
+          (isPengurus()
+            ? '<button class="btn sm blue" onclick="formAnggota(\'' + jsq(a.wargaId) + '\',\'' + jsq(a.id) + '\')">Edit</button>'+
+              '<button class="btn sm red" onclick="hapusAnggota(\'' + jsq(a.id) + '\')">Hapus</button>'
+            : '')+
+        '</div>'+
+      '</div>'+
+    '</div></div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function waAnggota(id){
+  var a = (S.anggota||[]).filter(function(x){ return x.id === id; })[0];
+  var wa = a ? nomorWa(a.noHp) : '';
+  if(!wa){ toast('Nomor HP anggota ini belum diisi.','err'); return; }
+  var pengirim = (S.me && S.me.nama) ? S.me.nama : 'warga';
+  bukaWa(wa, 'Assalamualaikum ' + (a.nama||'') + ', saya ' + pengirim +
+             ' warga ' + (S.settings.namaRT||'RT') + '.');
+}
+
+/* ---------- formulir tambah/ubah anggota ---------- */
+function formAnggota(wargaId, id){
+  if(!isPengurus()){ toast('Hanya pengurus yang dapat mengubah data keluarga.','err'); return; }
+  var a = id ? (S.anggota||[]).filter(function(x){ return x.id === id; })[0] : null;
+  var w = S.warga.filter(function(x){ return x.id === wargaId; })[0] || {};
+  var init = a ? JSON.parse(JSON.stringify(a))
+              : {hubungan:'Anak', jenisKelamin:'Laki-laki', statusTinggal:'Tinggal di Sini',
+                 statusPerkawinan:'Belum Kawin'};
+
+  formModal(a ? 'Edit Anggota — '+a.nama : 'Tambah Anggota Keluarga '+(w.nama||''), [
+    {k:'nama',            l:'Nama Lengkap', t:'text', req:true},
+    {k:'fotoUrl',         l:'Foto Profil', t:'foto',
+     help:'Boleh diambil langsung dari kamera. Ketuk foto di daftar untuk memperbesar.'},
+    {k:'hubungan',        l:'Status Hubungan dalam Keluarga', t:'select', opt:HUBUNGAN},
+    {k:'jenisKelamin',    l:'Jenis Kelamin', t:'select', opt:['Laki-laki','Perempuan']},
+    {k:'nik',             l:'NIK', t:'text', ph:'16 angka',
+     help:'Tampil tersamar demi privasi. Kosongkan bila tidak ingin mengubahnya.'},
+    {k:'tempatLahir',     l:'Tempat Lahir', t:'text'},
+    {k:'tanggalLahir',    l:'Tanggal Lahir', t:'date'},
+    {k:'agama',           l:'Agama', t:'select',
+     opt:['','Islam','Kristen','Katolik','Hindu','Buddha','Konghucu','Kepercayaan Lain']},
+    {k:'statusPerkawinan',l:'Status Perkawinan', t:'select',
+     opt:['Belum Kawin','Kawin','Cerai Hidup','Cerai Mati']},
+    {k:'pendidikan',      l:'Pendidikan Terakhir', t:'select',
+     opt:['','Belum Sekolah','SD','SMP','SMA','D3','S1','S2','S3']},
+    {k:'pekerjaan',       l:'Pekerjaan', t:'text', ph:'Pelajar / Karyawan Swasta / …'},
+    {k:'golonganDarah',   l:'Golongan Darah', t:'select', opt:['','A','B','AB','O']},
+    {k:'noHp',            l:'Nomor HP (WhatsApp)', t:'text', ph:'0812-…',
+     help:'Bila diisi, muncul tombol Telepon dan WhatsApp pada daftar anggota.'},
+    {k:'statusTinggal',   l:'Status Tinggal', t:'select', opt:STATUS_TINGGAL},
+    {k:'keterangan',      l:'Keterangan', t:'textarea',
+     ph:'Contoh: lansia perlu posyandu, disabilitas, kuliah di luar kota'}
+  ], init, function(v){
+    if(v.nik && String(v.nik).indexOf('•') >= 0){
+      delete v.nik;                       // nilai tersamar — biarkan NIK lama
+    }else if(v.nik && !/^\d{16}$/.test(String(v.nik).trim())){
+      toast('NIK harus tepat 16 angka, atau dikosongkan.','err');
+      return false;
+    }
+    if(v.noHp && !nomorWa(v.noHp)){
+      toast('Nomor HP tidak dikenali. Contoh: 0812-3456-7890','err');
+      return false;
+    }
+    v.wargaId = wargaId;
+    var aksi = a ? 'anggota_update' : 'anggota_add';
+    if(a) v.id = a.id;
+    mutate(aksi, v, {okMsg: a ? 'Data anggota diperbarui.' : 'Anggota keluarga ditambahkan.'})
+      .then(function(){
+        render();
+        daftarAnggota(wargaId);
+      })
+      .catch(function(){});
+  }, true);
+}
+
+function hapusAnggota(id){
+  var a = (S.anggota||[]).filter(function(x){ return x.id === id; })[0];
+  if(!a) return;
+  konfirmasi('Hapus '+a.nama+' ('+a.hubungan+') dari daftar anggota keluarga?', function(){
+    mutate('anggota_delete', {id:id, wargaId:a.wargaId}, {okMsg:'Anggota dihapus.'})
+      .then(function(){
+        render();
+        daftarAnggota(a.wargaId);
+      })
+      .catch(function(){});
+  });
+}
+
 /**
  * Pintu masuk kartu digital.
  *
@@ -1696,6 +1900,7 @@ function tampilkanKartu(w){
           avatarHtml(w.nama, w.fotoUrl, 'xl')+'</div>' : '')+
       '<div style="font-size:18px;font-weight:900;margin-top:6px">'+esc(w.nama)+'</div>'+
       '<div class="sub" style="color:#cbd5e1">'+esc(w.blok)+' '+esc(w.noRumah)+' • '+esc(w.statusHunian)+'</div>'+
+      (w.nik ? '<div class="sub" style="color:#cbd5e1">NIK '+esc(w.nik)+'</div>' : '')+
     '</div>'+
     '<div style="text-align:center">'+
       (S.online
@@ -1703,6 +1908,7 @@ function tampilkanKartu(w){
         : '<div class="qrbox">QR memerlukan koneksi.<br><br>Token:<br>'+esc(w.qrCodeToken)+'</div>')+
       '<div class="sub" style="margin-top:6px">Token akses: <b>'+esc(w.qrCodeToken)+'</b></div>'+
     '</div>'+
+    kartuKeluarga(w)+
     '<div class="grid g2">'+
       '<div class="card flat b-yellow" style="text-align:center"><div style="font-size:20px;font-weight:900">'+num(w.points)+'</div><div style="font-size:10px;font-weight:900">POIN WARGA</div></div>'+
       '<div class="card flat '+(w.twoFactorEnabled?'b-green':'b-gray')+'" style="text-align:center">'+
@@ -1721,6 +1927,56 @@ function tampilkanKartu(w){
     (w.dibukaOleh === 'pengurus'
       ? '<button class="btn dark" onclick="closeModal();formWarga(\''+jsq(w.id)+'\')">Edit Data</button>'
       : '<button class="btn '+(w.pinBawaan?'red':'dark')+'" onclick="formGantiPinKartu(\''+jsq(w.id)+'\')">🔑 Ganti PIN</button>'));
+}
+
+/**
+ * Daftar jiwa di dalam kartu digital.
+ *
+ * Data ini datang dari respons kartu_buka yang sudah lolos PIN, jadi NIK
+ * di sini tampil utuh — berbeda dengan daftar umum yang menyamarkannya.
+ */
+function kartuKeluarga(w){
+  var list = w.anggota || [];
+  var jiwa = w.jumlahJiwa || (list.length + 1);
+
+  var h = '<div class="card flat" style="background:#f8fafc">'+
+    '<div class="spread"><b style="font-size:12px">👪 ANGGOTA KELUARGA</b>'+
+      '<span class="badge b-blue">'+jiwa+' jiwa</span></div>';
+
+  if(!list.length){
+    return h + '<div class="sub" style="margin-top:6px">Belum ada anggota keluarga yang didata. '+
+      'Hubungi pengurus RT untuk melengkapinya.</div></div>';
+  }
+
+  h += '<div class="stack" style="margin-top:8px">';
+  list.forEach(function(a){
+    var umur = umurDari(a.tanggalLahir);
+    h += '<div class="row" style="align-items:flex-start;padding:7px 0;border-top:1px solid #e2e8f0">'+
+      avatarHtml(a.nama, a.fotoUrl)+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="spread" style="gap:6px"><b style="font-size:12.5px">'+esc(a.nama)+'</b>'+
+          '<span class="badge b-yellow">'+esc(a.hubungan||'Lainnya')+'</span></div>'+
+        '<div class="sub">'+ikonKelamin(a.jenisKelamin)+' '+esc(a.jenisKelamin||'-')+
+          (umur ? ' • '+esc(umur) : '')+
+          (a.golonganDarah ? ' • Gol. '+esc(a.golonganDarah) : '')+'</div>'+
+        (a.nik ? '<div class="sub">NIK '+esc(a.nik)+'</div>' : '')+
+        (a.statusTinggal && a.statusTinggal !== 'Tinggal di Sini'
+          ? '<div><span class="badge b-gray" style="margin-top:3px">'+esc(a.statusTinggal)+'</span></div>' : '')+
+      '</div>'+
+      (nomorWa(a.noHp)
+        ? '<button class="btn sm green" onclick="waAnggotaKartu(\''+jsq(nomorWa(a.noHp))+'\',\''+jsq(a.nama||'')+'\')">💬</button>'
+        : '')+
+    '</div>';
+  });
+  h += '</div></div>';
+  return h;
+}
+
+/** WhatsApp dari dalam kartu — nomornya sudah ada di data kartu. */
+function waAnggotaKartu(nomor, nama){
+  var pengirim = (S.me && S.me.nama) ? S.me.nama : 'warga';
+  bukaWa(nomor, 'Assalamualaikum ' + (nama||'') + ', saya ' + pengirim +
+                ' warga ' + (S.settings.namaRT||'RT') + '.');
 }
 
 /* ---------- ganti PIN kartu oleh warga sendiri ---------- */
