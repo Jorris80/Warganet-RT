@@ -1414,8 +1414,8 @@ function viewOverview(){
     stat('Kamera CCTV', num((S.cctv||[]).filter(function(c){return isPengurus()||c.publik;}).length),
          num((S.cctv||[]).filter(function(c){return c.status==='Aktif';}).length)+' aktif','')+
     stat('Voting Aktif', num(S.voting.filter(function(v){return v.status==='Aktif';}).length), 'musyawarah digital','')+
-    stat('Bidang Bertuan', num((S.bidang||[]).filter(function(b){return b.wargaId;}).length),
-         'tertaut ke data warga','')+
+    stat('Rumah Kosong', num(S.warga.filter(rumahKosong).length),
+         'tanpa penghuni — kontak pemilik tercatat','')+
   '</div>';
 
   /* aksi cepat + pengumuman */
@@ -1463,10 +1463,13 @@ function viewWarga(){
   var list = S.warga.filter(function(w){
     return !q || (w.nama+' '+w.blok+' '+w.noRumah+' '+w.nik+' '+w.noHp).toLowerCase().indexOf(q)>=0;
   });
-  var jiwa = S.warga.reduce(function(a,w){return a+(Number(w.jumlahAnggota)||0);},0);
+  var kosong = S.warga.filter(rumahKosong).length;
+  var jiwa = S.warga.reduce(function(a,w){ return a + (rumahKosong(w) ? 0 : jumlahJiwa(w)); }, 0);
 
   var h = hSection('👥','Pencatatan Warga & Kartu Keluarga',
-    S.warga.length+' KK • '+jiwa+' jiwa • '+S.warga.filter(function(w){return w.isVerified;}).length+' terverifikasi',
+    (S.warga.length-kosong)+' KK berpenghuni • '+jiwa+' jiwa'+
+    (kosong ? ' • '+kosong+' rumah kosong' : '')+
+    ' • '+S.warga.filter(function(w){return w.isVerified;}).length+' terverifikasi',
     isPengurus() ? '<button class="btn dark" onclick="formWarga()">+ Tambah Warga</button>' : '');
 
   h += '<div class="card" style="margin-bottom:12px"><input class="inp" id="qWarga" placeholder="Cari nama, blok, NIK, atau nomor HP…" value="'+esc(wargaFilter)+'" oninput="wargaFilter=this.value;render();setTimeout(function(){var e=document.getElementById(\'qWarga\');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},0)"></div>';
@@ -1477,10 +1480,13 @@ function viewWarga(){
   if(!list.length) h += '<tr><td colspan="6" class="empty">Tidak ada data warga yang cocok.</td></tr>';
   list.forEach(function(w){
     h += '<tr><td><div class="row">'+avatarHtml(w.nama, w.fotoUrl)+'<div>'+
-        '<b>'+esc(w.nama)+'</b>'+pendingMark(w)+'<div class="sub">NIK '+esc(maskNik(w.nik))+'</div></div></div></td>'+
+        '<b>'+esc(w.nama)+'</b>'+pendingMark(w)+
+        '<div class="sub">'+(rumahKosong(w) ? 'Tanpa penghuni' : 'NIK '+esc(maskNik(w.nik)))+
+        '</div></div></div></td>'+
       '<td>'+esc(w.blok)+' '+esc(w.noRumah)+'<div class="sub">'+esc(w.statusHunian)+' • '+
-        num(jumlahJiwa(w))+' jiwa</div></td>'+
-      '<td>'+esc(w.noHp)+'<div class="sub">'+esc(w.email||'-')+'</div></td>'+
+        num(jumlahJiwa(w))+' jiwa</div>'+
+        (rumahKosong(w) ? '<div style="margin-top:4px">'+badgeRumah(w)+'</div>' : '')+'</td>'+
+      '<td>'+kolomKontak(w)+'</td>'+
       '<td><span class="badge '+(w.statusAkun==='Active'?'b-green':w.statusAkun==='Guest'?'b-violet':'b-gray')+'">'+esc(w.statusAkun||'-')+'</span>'+
         (w.isVerified?' <span class="badge b-blue">✓ Verified</span>':'')+
         (w.twoFactorEnabled?' <span class="badge b-yellow">2FA</span>':'')+'</td>'+
@@ -1535,6 +1541,20 @@ function wargaFields(){
     {k:'statusAkun',l:'Status Akun',t:'select',opt:['Active','Inactive','Guest']},
     {k:'keterangan',l:'Keterangan',t:'textarea',
      ph:'Contoh: pengurus RT, lansia, penyandang disabilitas, kontrak berakhir Desember'},
+
+    /* --- status hunian rumah --- */
+    {k:'statusRumah',l:'Status Rumah',t:'select',opt:STATUS_RUMAH,
+     help:'Pilih selain “Dihuni” bila rumah sedang kosong. Jumlah jiwa otomatis jadi nol dan '+
+          'penagihan iuran massal melewatinya.'},
+    {k:'tanggalKosong',l:'Kosong Sejak',t:'date'},
+    {k:'pemilikNama',l:'Nama Pemilik',t:'text',
+     help:'Diisi bila pemilik tidak tinggal di rumah ini.'},
+    {k:'pemilikNoHp',l:'HP / WhatsApp Pemilik',t:'text',ph:'0812-xxxx-xxxx'},
+    {k:'pemilikDomisili',l:'Domisili Pemilik',t:'text',ph:'Kota tempat pemilik tinggal sekarang'},
+    {k:'kontakAltNama',l:'Kontak Alternatif',t:'text',
+     ph:'Agen, kerabat, atau tetangga yang dititipi kunci'},
+    {k:'kontakAltNoHp',l:'HP / WhatsApp Kontak Alternatif',t:'text'},
+    {k:'kontakAltPeran',l:'Peran Kontak Alternatif',t:'select',opt:PERAN_KONTAK},
     {k:'isVerified',l:'Sudah diverifikasi pengurus',t:'checkbox'},
     {k:'twoFactorEnabled',l:'Aktifkan 2FA',t:'checkbox'}
   ];
@@ -1573,13 +1593,78 @@ var HUBUNGAN = ['Istri', 'Suami', 'Anak', 'Menantu', 'Cucu', 'Orang Tua', 'Mertu
                 'Famili Lain', 'Pembantu', 'Lainnya'];
 var STATUS_TINGGAL = ['Tinggal di Sini', 'Merantau / Kos', 'Sementara', 'Sudah Pindah'];
 
+/* ---------- status rumah ---------- */
+var STATUS_RUMAH = ['Dihuni', 'Kosong - Dicari Penyewa', 'Kosong - Dijual',
+                    'Kosong - Ditinggal Pemilik', 'Bukan Rumah Tinggal'];
+var PERAN_KONTAK = ['', 'Agen/Broker', 'Kerabat/Titipan', 'Pengelola', 'Tetangga', 'Lainnya'];
+
+/** Benar bila rumah tidak sedang dihuni. Data lama tanpa status = dianggap dihuni. */
+function rumahKosong(w){
+  var st = String((w && w.statusRumah) || '').trim();
+  return !!st && st !== 'Dihuni';
+}
+
+function badgeRumah(w){
+  if(!rumahKosong(w)) return '';
+  var st = w.statusRumah;
+  var warna = /Dijual/i.test(st) ? 'b-violet' : /Penyewa/i.test(st) ? 'b-yellow' : 'b-gray';
+  return '<span class="badge '+warna+'" title="Rumah tidak berpenghuni">🏚️ '+esc(st)+'</span>';
+}
+
+/**
+ * Siapa yang layak dihubungi untuk satu rumah.
+ * Rumah berpenghuni → kepala keluarga. Rumah kosong → pemiliknya, dan bila
+ * pemilik tinggal di luar daerah, kontak alternatif (agen/kerabat) ikut disertakan.
+ */
+function kontakRumah(w){
+  var out = [];
+  if(!rumahKosong(w)){
+    if(w.noHp) out.push({nama:w.nama, noHp:w.noHp, peran:'Kepala Keluarga'});
+  }else{
+    if(w.pemilikNoHp) out.push({nama:w.pemilikNama||'Pemilik', noHp:w.pemilikNoHp,
+                                peran:'Pemilik'+(w.pemilikDomisili?' — '+w.pemilikDomisili:'')});
+    if(w.kontakAltNoHp) out.push({nama:w.kontakAltNama||'Kontak lain', noHp:w.kontakAltNoHp,
+                                  peran:w.kontakAltPeran||'Kontak alternatif'});
+    if(!out.length && w.noHp) out.push({nama:w.nama, noHp:w.noHp, peran:'Kontak terdaftar'});
+  }
+  return out;
+}
+
+/** Deretan tombol Telepon + WhatsApp untuk satu nomor. */
+function tombolKontak(nama, noHp, kecil){
+  var sz = kecil ? ' sm' : '';
+  var h = '';
+  if(nomorTel(noHp)){
+    h += '<a class="btn'+sz+'" href="tel:'+esc(nomorTel(noHp))+'" '+
+         'style="text-decoration:none;color:inherit" title="Telepon '+esc(nama)+'">📞 Telepon</a>';
+  }
+  if(nomorWa(noHp)){
+    h += '<button class="btn'+sz+' green" onclick="waNomor(\''+jsq(nomorWa(noHp))+'\',\''+jsq(nama)+'\')" '+
+         'title="Chat WhatsApp '+esc(nama)+'">💬 WhatsApp</button>';
+  }
+  return h;
+}
+
+/** Buka WhatsApp ke nomor mana pun dengan salam pembuka standar. */
+function waNomor(nomor, nama){
+  var pengirim = (S.me && S.me.nama) ? S.me.nama : 'warga';
+  bukaWa(nomor, 'Assalamualaikum ' + (nama || '') + ', saya ' + pengirim +
+                ' warga ' + (S.settings.namaRT || 'RT') + '.');
+}
+
 function anggotaDari(wargaId){
   return (S.anggota||[]).filter(function(a){ return a.wargaId === wargaId; });
 }
 
-/** Jumlah jiwa = kepala keluarga + anggotanya. */
+/**
+ * Jumlah jiwa = kepala keluarga + anggotanya.
+ * Rumah kosong tidak punya kepala keluarga yang menghuni, jadi tidak
+ * ditambah satu — aturan ini harus sama persis dengan sinkronJumlahJiwa()
+ * di Code.gs, kalau tidak angka di layar berbeda dengan isi lembar kerja.
+ */
 function jumlahJiwa(w){
-  return anggotaDari(w.id).length + 1;
+  var anggota = anggotaDari(w.id).length;
+  return rumahKosong(w) ? anggota : anggota + 1;
 }
 
 function umurDari(tgl){
@@ -1600,6 +1685,23 @@ function ikonKelamin(jk){
   return '•';
 }
 
+/** Isi kolom Kontak pada tabel warga, lengkap dengan tombol telepon & WA. */
+function kolomKontak(w){
+  var daftar = kontakRumah(w);
+  if(!daftar.length){
+    return '<span class="sub">Belum ada nomor'+
+      (rumahKosong(w) ? ' — isi kontak pemilik lewat Edit' : '')+'</span>';
+  }
+  return daftar.map(function(k){
+    return '<div style="margin-bottom:6px">'+
+      '<div style="font-size:12px;font-weight:800">'+esc(k.noHp)+'</div>'+
+      '<div class="sub">'+esc(k.peran)+'</div>'+
+      '<div class="row" style="margin-top:4px">'+tombolKontak(k.nama, k.noHp, true)+'</div>'+
+    '</div>';
+  }).join('') + (!rumahKosong(w) && w.email
+    ? '<div class="sub">'+esc(w.email)+'</div>' : '');
+}
+
 /** Jendela daftar anggota satu keluarga. */
 function daftarAnggota(wargaId){
   var w = S.warga.filter(function(x){ return x.id === wargaId; })[0];
@@ -1614,6 +1716,8 @@ function daftarAnggota(wargaId){
 function isiDaftarAnggota(wargaId){
   var w = S.warga.filter(function(x){ return x.id === wargaId; })[0] || {};
   var list = anggotaDari(wargaId);
+
+  if(rumahKosong(w)) return isiRumahKosong(w, list);
 
   var umurKk = umurDari(w.tanggalLahir);
   var h = '<div class="card flat" style="background:#111;color:#fff">'+
@@ -1636,13 +1740,15 @@ function isiDaftarAnggota(wargaId){
         (w.statusPerkawinan
           ? '<div class="sub" style="color:#cbd5e1">'+esc(w.statusPerkawinan)+'</div>' : '')+
         '<div class="sub" style="color:#cbd5e1">'+esc(w.blok||'')+' '+esc(w.noRumah||'')+
-          ' • '+esc(w.statusHunian||'')+' • '+esc(w.noHp||'-')+'</div>'+
+          ' • '+esc(w.statusHunian||'')+'</div>'+
         (w.keterangan
           ? '<div class="sub" style="color:#cbd5e1;margin-top:4px">'+esc(w.keterangan)+'</div>' : '')+
-        (isPengurus()
-          ? '<div class="row" style="margin-top:8px">'+
-            '<button class="btn sm blue" onclick="formWarga(\''+jsq(w.id)+'\')">Edit Kepala Keluarga</button></div>'
-          : '')+
+        '<div class="row" style="margin-top:8px;flex-wrap:wrap">'+
+          tombolKontak(w.nama, w.noHp, true)+
+          (isPengurus()
+            ? '<button class="btn sm blue" onclick="formWarga(\''+jsq(w.id)+'\')">Edit Kepala Keluarga</button>'
+            : '')+
+        '</div>'+
       '</div>'+
       '<div style="text-align:right"><div style="font-size:24px;font-weight:900">'+(list.length+1)+'</div>'+
         '<div style="font-size:9.5px;font-weight:900;letter-spacing:.5px">JIWA</div></div>'+
@@ -1706,6 +1812,61 @@ function isiDaftarAnggota(wargaId){
     '</div></div>';
   });
   h += '</div>';
+  return h;
+}
+
+/**
+ * Tampilan untuk rumah tanpa penghuni. Yang ditonjolkan bukan daftar jiwa —
+ * memang tidak ada — melainkan siapa yang bisa dihubungi: pemiliknya, dan
+ * bila pemilik berdomisili di luar, agen atau kerabat yang dititipi.
+ */
+function isiRumahKosong(w, list){
+  var h = '<div class="card flat" style="background:#111;color:#fff">'+
+    '<div class="row" style="align-items:flex-start">'+
+      '<div class="ava lg" style="background:#334155">🏚️</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="spread" style="gap:6px"><b style="font-size:14px">'+esc(w.nama||'Rumah kosong')+'</b>'+
+          badgeRumah(w)+'</div>'+
+        '<div class="sub" style="color:#cbd5e1;margin-top:3px">'+esc(w.blok||'')+' '+esc(w.noRumah||'')+
+          ' • '+esc(w.statusHunian||'')+'</div>'+
+        (w.tanggalKosong
+          ? '<div class="sub" style="color:#cbd5e1">Kosong sejak '+esc(w.tanggalKosong)+'</div>' : '')+
+        (w.keterangan
+          ? '<div class="sub" style="color:#cbd5e1;margin-top:4px">'+esc(w.keterangan)+'</div>' : '')+
+        (isPengurus()
+          ? '<div class="row" style="margin-top:8px">'+
+            '<button class="btn sm blue" onclick="formWarga(\''+jsq(w.id)+'\')">Edit Data Rumah</button></div>'
+          : '')+
+      '</div>'+
+      '<div style="text-align:right"><div style="font-size:24px;font-weight:900">0</div>'+
+        '<div style="font-size:9.5px;font-weight:900;letter-spacing:.5px">JIWA</div></div>'+
+    '</div></div>';
+
+  var kontak = kontakRumah(w);
+  h += '<div class="card flat"><b style="font-size:12px">📞 YANG DAPAT DIHUBUNGI</b>';
+  if(!kontak.length){
+    h += '<div class="empty" style="padding:14px">Belum ada nomor pemilik atau agen yang tercatat. '+
+      (isPengurus()
+        ? 'Tekan “Edit Data Rumah” lalu isi kontak pemiliknya — ini penting saat terjadi kebocoran '+
+          'air, pohon tumbang, atau keadaan darurat lain di rumah kosong.'
+        : 'Hubungi pengurus RT bila Anda mengetahui kontak pemiliknya.')+'</div>';
+  }else{
+    kontak.forEach(function(k){
+      h += '<div class="card flat" style="margin-top:8px;background:#f8fafc">'+
+        '<div class="spread" style="gap:6px"><b style="font-size:12.5px">'+esc(k.nama)+'</b>'+
+          '<span class="badge b-gray">'+esc(k.peran)+'</span></div>'+
+        '<div class="sub" style="margin-top:3px">'+esc(k.noHp)+'</div>'+
+        '<div class="row" style="margin-top:8px;flex-wrap:wrap">'+tombolKontak(k.nama, k.noHp, true)+'</div>'+
+      '</div>';
+    });
+  }
+  h += '</div>';
+
+  if(list.length){
+    h += '<div class="mapnote">Masih ada '+list.length+' anggota tercatat pada rumah ini padahal '+
+      'statusnya kosong. Periksa kembali datanya — bila penghuninya sudah pindah, hapus daftarnya '+
+      'atau kembalikan status rumah menjadi Dihuni.</div>';
+  }
   return h;
 }
 
@@ -3013,7 +3174,17 @@ function popupBidang(b){
     '<div style="font-weight:900;font-size:14px">'+esc(b.blok||'')+' '+esc(b.noRumah||'')+'</div>'+
     '<div style="font-size:11px;color:#64748b;margin-bottom:6px">'+esc(b.jenis)+' • '+esc(luasTeks(b.luas))+'</div>';
 
-  if(w){
+  if(w && rumahKosong(w)){
+    h += '<div style="margin:8px 0">'+badgeRumah(w)+'</div>';
+    var kk = kontakRumah(w);
+    if(kk.length){
+      h += '<div style="font-size:11.5px"><b>'+esc(kk[0].nama)+'</b><br>'+esc(kk[0].peran)+'<br>'+
+           '📞 '+esc(kk[0].noHp)+'</div>'+
+           '<div style="margin-top:8px;display:flex;gap:5px">'+tombolKontak(kk[0].nama, kk[0].noHp, true)+'</div>';
+    }else{
+      h += '<div style="font-size:11.5px;color:#64748b">Kontak pemilik belum tercatat.</div>';
+    }
+  }else if(w){
     h += '<div style="display:flex;gap:8px;align-items:center;margin:8px 0">'+
            avatarHtml(w.nama, w.fotoUrl)+
            '<div><b style="font-size:12.5px">'+esc(w.nama)+'</b>'+
