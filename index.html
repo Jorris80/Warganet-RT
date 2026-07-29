@@ -1013,6 +1013,11 @@ function formModal(title, fields, initial, onSubmit, wide){
         h += '<option value="'+esc(o.v)+'"'+(String(v)===String(o.v)?' selected':'')+'>'+esc(o.l)+'</option>';
       });
       h += '</select>';
+    } else if(f.t === 'aksi'){
+      /* Bukan isian: sekadar tombol bantu di tengah formulir. */
+      h += '<button type="button" class="btn" onclick="'+f.fn+'" '+
+           'style="width:100%;justify-content:center">'+esc(f.label||'Jalankan')+'</button>'+
+           '<div class="fotohint" id="f_help_'+f.k+'">'+esc(f.help||'')+'</div>';
     } else if(f.t === 'color'){
       h += '<div class="row"><input type="color" id="f_'+f.k+'" value="'+esc(v||'#3b82f6')+'" '+
            'style="width:56px;height:38px;border:2px solid #000;padding:2px;background:#fff">'+
@@ -1961,9 +1966,50 @@ function kartuWarga(id){
   if(isPengurus()){ bukaKartuPengurus(id); return; }
 
   var simpan = ambilKartu(id);
-  if(simpan){ tampilkanKartu(simpan); return; }
+  if(simpan){ tampilkanKartu(segarkanKartu(simpan)); return; }
 
   mintaPinKartu(w);
+}
+
+/**
+ * Gabungkan kartu tersimpan dengan data terbaru.
+ *
+ * Kartu disimpan di HP supaya bisa ditunjukkan tanpa sinyal, tetapi isinya
+ * membeku pada saat PIN pertama kali diverifikasi. Akibatnya anggota keluarga
+ * yang didata belakangan tidak pernah muncul, sehingga kartu versi warga dan
+ * versi pengurus terlihat berbeda.
+ *
+ * Yang benar-benar perlu diambil dari kartu tersimpan hanyalah bagian yang
+ * memerlukan PIN: token QR dan NIK utuh. Sisanya — termasuk daftar anggota —
+ * selalu diambil dari data terbaru yang sudah ada di aplikasi.
+ */
+function segarkanKartu(kartu){
+  if(!kartu || !kartu.id) return kartu;
+  var w = S.warga.filter(function(x){ return x.id === kartu.id; })[0];
+  if(!w) return kartu;                       // data warga belum termuat
+
+  var out = {};
+  for(var k in w) if(w.hasOwnProperty(k)) out[k] = w[k];
+
+  /* bagian rahasia: hanya ada pada kartu yang sudah lolos PIN */
+  out.qrCodeToken = kartu.qrCodeToken;
+  out.pinBawaan   = kartu.pinBawaan;
+  out.dibukaOleh  = kartu.dibukaOleh;
+  if(kartu.nik && String(kartu.nik).indexOf('•') < 0) out.nik = kartu.nik;
+
+  /* daftar anggota selalu yang terbaru; NIK utuh dipertahankan bila ada */
+  var nikUtuh = {};
+  (kartu.anggota || []).forEach(function(a){
+    if(a.nik && String(a.nik).indexOf('•') < 0) nikUtuh[a.id] = a.nik;
+  });
+  out.anggota = anggotaDari(kartu.id).map(function(a){
+    var c = {};
+    for(var kk in a) if(a.hasOwnProperty(kk)) c[kk] = a[kk];
+    if(nikUtuh[a.id]) c.nik = nikUtuh[a.id];
+    return c;
+  });
+  out.jumlahJiwa = jumlahJiwa(w);
+  return out;
 }
 
 /** Jendela PIN untuk warga. */
@@ -2026,7 +2072,7 @@ function cekPinKartu(id){
     _kartuSibuk = false;
     simpanKartu(data);
     closeModal();
-    tampilkanKartu(data);
+    tampilkanKartu(segarkanKartu(data));
     if(data.pinBawaan){
       toast('Kartu terbuka. Anda masih memakai PIN bawaan — sebaiknya segera diganti.','info');
     }
@@ -2050,7 +2096,7 @@ function setPesanKartu(teks){
 function bukaKartuPengurus(id){
   if(!S.online){
     var simpan = ambilKartu(id);
-    if(simpan){ tampilkanKartu(simpan); return; }
+    if(simpan){ tampilkanKartu(segarkanKartu(simpan)); return; }
     toast('Membuka kartu warga lain memerlukan koneksi.','err');
     return;
   }
@@ -4022,6 +4068,38 @@ function cctvKePeta(id){
   go('patrol');
 }
 
+/**
+ * Isi ruas lintang & bujur pada formulir dari GPS perangkat.
+ * Dipakai formulir CCTV, dan bisa dipakai formulir lain yang punya
+ * ruas dengan id f_lat dan f_lng.
+ */
+function isiKoordinatDariGps(){
+  var el = $('f_help__gps');
+  function lapor(teks, warna){
+    if(el){ el.textContent = teks; el.style.color = warna || 'var(--muted)'; }
+  }
+
+  if(!navigator.geolocation){
+    lapor('Perangkat ini tidak mendukung GPS.', 'var(--red)');
+    toast('Perangkat ini tidak mendukung GPS.','err');
+    return;
+  }
+
+  lapor('Mencari posisi GPS…');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var la = pos.coords.latitude, ln = pos.coords.longitude;
+    var eLat = $('f_lat'), eLng = $('f_lng');
+    if(eLat) eLat.value = la.toFixed(6);
+    if(eLng) eLng.value = ln.toFixed(6);
+    lapor('Terisi dari GPS — ketelitian ±' + Math.round(pos.coords.accuracy || 0) +
+          ' m. Periksa dan koreksi bila perlu.', 'var(--green)');
+    toast('Koordinat terisi dari GPS.','ok');
+  }, function(err){
+    lapor('GPS gagal: ' + pesanGeo(err), 'var(--red)');
+    toast('GPS gagal: ' + pesanGeo(err),'err');
+  }, {enableHighAccuracy:true, timeout:15000, maximumAge:3000});
+}
+
 function formCctv(id){
   if(!isPengurus()){ toast('Hanya pengurus yang dapat mengelola CCTV.','err'); return; }
   var c = id ? (S.cctv||[]).filter(function(x){return x.id===id;})[0] : null;
@@ -4035,8 +4113,14 @@ function formCctv(id){
      ph:'https://…', help:'YouTube: tempel tautan siaran. HLS: alamat berakhiran .m3u8. Harus diawali https://'},
     {k:'status', l:'Status', t:'select', opt:['Aktif','Nonaktif','Perbaikan']},
     {k:'publik', l:'Boleh dilihat semua warga', t:'checkbox'},
-    {k:'lat',    l:'Lintang (Latitude)', t:'number', help:'Opsional — agar kamera muncul sebagai pin di peta.'},
-    {k:'lng',    l:'Bujur (Longitude)', t:'number'},
+    {k:'_gps',   l:'Koordinat Kamera (opsional)', t:'aksi',
+     label:'📍 Ambil Posisi GPS Perangkat',
+     fn:'isiKoordinatDariGps()',
+     help:'Berdirilah di dekat kamera lalu tekan tombol ini — lintang dan bujur di bawah '+
+          'terisi sendiri. Bisa juga diketik manual, atau dikosongkan bila kamera tidak '+
+          'perlu muncul di peta.'},
+    {k:'lat',    l:'Lintang (Latitude)', t:'number', ph:'-6.903400'},
+    {k:'lng',    l:'Bujur (Longitude)', t:'number', ph:'107.618100'},
     {k:'catatan',l:'Catatan', t:'textarea'}
   ], init, function(v){
     if(!urlAman(v.url)){ toast('URL harus diawali http:// atau https://','err'); return false; }
