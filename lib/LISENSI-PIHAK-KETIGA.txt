@@ -1,0 +1,157 @@
+LISENSI PIHAK KETIGA — WargaNet RT/RW
+=====================================
+
+Berkas ini mendaftar seluruh komponen pihak ketiga yang disertakan di dalam
+paket WargaNet RT/RW, beserta lisensinya. Sertakan berkas ini pada setiap
+penyerahan aplikasi ke pelanggan.
+
+
+1. LEAFLET 1.9.4  —  lib/leaflet.js, lib/leaflet.css
+   Pustaka peta interaktif. https://leafletjs.com
+   Lisensi: BSD 2-Clause. Boleh dipakai komersial, wajib mencantumkan
+   pemberitahuan hak cipta di bawah ini.
+
+BSD 2-Clause License
+
+Copyright (c) 2010-2023, Volodymyr Agafonkin
+Copyright (c) 2010-2011, CloudMade
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+2. HLS.JS 1.5.13  —  lib/hls.min.js
+   Pemutar siaran HLS untuk modul CCTV. https://github.com/video-dev/hls.js
+   Lisensi: Apache License 2.0. Boleh dipakai komersial.
+
+Copyright (c) 2017 Dailymotion (http://www.dailymotion.com)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+src/remux/mp4-generator.js and src/demux/exp-golomb.ts implementation in this project
+are derived from the HLS library for video.js (https://github.com/videojs/videojs-contrib-hls)
+
+That work is also covered by the Apache 2 License, following copyright:
+Copyright (c) 2013-2015 Brightcove
+
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+3. FONT DEJAVU  —  dipakai hanya saat membuat berkas PANDUAN PDF
+   Lisensi bebas (Bitstream Vera / Arev). Tidak disertakan dalam aplikasi
+   yang berjalan, jadi tidak memengaruhi pemakaian oleh pelanggan.
+
+
+LAYANAN YANG *TIDAK* DISERTAKAN
+================================
+
+Hal-hal berikut sengaja TIDAK ditanam di dalam aplikasi, karena ketentuannya
+tidak mengizinkan pemakaian pada produk yang dijual tanpa perjanjian sendiri:
+
+  - Ubin peta OpenStreetMap (tile.openstreetmap.org)
+    Dijalankan sukarelawan. Kebijakannya melarang pengunduhan massal dan
+    penyimpanan luring, serta menyatakan akses layanan komersial dapat
+    dicabut sewaktu-waktu.
+
+  - Citra Esri lewat server.arcgisonline.com
+    Bukan basemap bebas pakai. Ketentuan Esri mensyaratkan langganan ArcGIS
+    dan token yang sah.
+
+  - Ubin OpenTopoMap
+    Server sukarelawan dengan batasan serupa OpenStreetMap.
+
+Sebagai gantinya aplikasi memakai model "bawa kunci sendiri": pemilik sistem
+mendaftarkan kunci API atas namanya sendiri (MapTiler, Esri ArcGIS, Mapbox,
+atau sumber ubin miliknya sendiri). Tanpa kunci, aplikasi tetap berjalan penuh
+memakai Peta Grid yang digambar sendiri di perangkat — tanpa server pihak mana
+pun, tanpa biaya, tanpa ketentuan tambahan.
+
+
+LAYANAN OPSIONAL YANG DIPANGGIL SAAT DIPAKAI
+=============================================
+
+  - Google Gemini API — hanya aktif bila pemilik sistem mengisi API Key
+    miliknya sendiri. Tunduk pada ketentuan layanan Google.
+
+  - api.qrserver.com (goQR.me) — membuat gambar QR kartu warga. Gratis,
+    tanpa jaminan ketersediaan. Bila layanan ini tidak dapat dijangkau,
+    aplikasi menampilkan token kartu dalam bentuk teks.
+
+  - Google Workspace (Sheets, Drive, Apps Script) — berjalan di akun Google
+    milik pelanggan sendiri, tunduk pada ketentuan Google.
+
+  - WhatsApp (wa.me) — hanya membuka tautan; tidak ada data yang dikirim ke
+    pihak WargaNet.
+
+
+DATA PELANGGAN
+==============
+
+Seluruh data tersimpan di Google Sheets pada akun Google milik pelanggan.
+Penyedia aplikasi tidak menyimpan salinan data pelanggan.
+
+4. QR CODE GENERATOR FOR JAVASCRIPT  —  lib/qrcode.min.js
+   (juga disertakan langsung di dalam Index.html)
+   Pembentuk kode QR untuk kartu digital warga.
+   https://github.com/kazuhikoarase/qrcode-generator
+
+   Copyright (c) 2009 Kazuhiko Arase
+   Lisensi: MIT
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
+
+   Catatan merek: "QR Code" adalah merek terdaftar DENSO WAVE INCORPORATED.
+   Pemakaian teknologi QR Code itu sendiri bebas royalti — DENSO WAVE tidak
+   memungut biaya lisensi paten untuk pembuatan maupun pembacaan kode QR.

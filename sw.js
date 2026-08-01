@@ -12,12 +12,10 @@
  * mendapat versi terbaru, bukan versi lama dari cache.
  */
 
-var CACHE_VERSION = 'warganet-v2';
+var CACHE_VERSION = 'warganet-v4';
 
 /** Cache terpisah untuk ubin peta & foto agar tidak ikut terhapus saat shell naik versi. */
-var CACHE_PETA  = 'warganet-peta-v1';
 var CACHE_FOTO  = 'warganet-foto-v1';
-var BATAS_PETA  = 900;   // maksimum ubin peta yang disimpan
 var BATAS_FOTO  = 300;   // maksimum foto profil yang disimpan
 
 var SHELL = [
@@ -28,18 +26,41 @@ var SHELL = [
   './icon.svg'
 ];
 
-/** Pustaka pihak ketiga: dicoba di-cache saat instal, tapi kegagalannya diabaikan. */
+/** Pustaka disertakan dalam paket, jadi ikut di-cache bersama shell. */
 var VENDOR = [
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  './lib/leaflet.css',
+  './lib/leaflet.js',
+  './lib/hls.min.js',
+  './lib/LISENSI-PIHAK-KETIGA.txt'
 ];
 
-/** Host penyedia ubin peta — di-cache agar area yang pernah dibuka tetap terlihat offline. */
-function hostPeta(h) {
+/*
+ * Catatan: lib/qrcode.min.js TIDAK didaftarkan di sini karena pembentuk
+ * kode QR sudah menyatu di dalam index.html. Berkas itu tetap disertakan
+ * dalam paket sebagai rujukan sumber dan bukti lisensi MIT-nya.
+ */
+
+/*
+ * CATATAN LISENSI — ubin peta sengaja TIDAK di-cache.
+ *
+ * Versi sebelumnya menyimpan sampai 900 ubin agar peta tetap tampil luring.
+ * Itu tergolong pengunduhan massal (prefetch/offline), yang dilarang tegas
+ * oleh kebijakan pemakaian ubin OpenStreetMap dan melanggar ketentuan sebagian
+ * besar penyedia komersial. Karena aplikasi ini dijual, risikonya akan ikut
+ * berpindah ke pelanggan.
+ *
+ * Ubin kini diteruskan apa adanya ke jaringan; peramban tetap boleh menyimpannya
+ * sesuai header Cache-Control dari penyedia — itu perilaku normal dan diizinkan.
+ * Untuk peta luring sungguhan, tersedia Peta Grid yang digambar sendiri di
+ * perangkat tanpa server mana pun.
+ */
+function hostUbinPeta(h) {
   return h.indexOf('tile.openstreetmap.org') >= 0 ||
          h.indexOf('tile.opentopomap.org') >= 0 ||
-         h.indexOf('server.arcgisonline.com') >= 0 ||
-         h.indexOf('basemaps.arcgis.com') >= 0;
+         h.indexOf('arcgisonline.com') >= 0 ||
+         h.indexOf('arcgis.com') >= 0 ||
+         h.indexOf('api.maptiler.com') >= 0 ||
+         h.indexOf('api.mapbox.com') >= 0;
 }
 
 /** Host penyimpan foto profil. */
@@ -98,7 +119,8 @@ self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (k) {
-        if (k !== CACHE_VERSION && k !== CACHE_PETA && k !== CACHE_FOTO) return caches.delete(k);
+        // CACHE_PETA lama ikut dihapus: ubin tidak lagi boleh disimpan.
+        if (k !== CACHE_VERSION && k !== CACHE_FOTO) return caches.delete(k);
       }));
     }).then(function () {
       return self.clients.claim();
@@ -118,15 +140,8 @@ self.addEventListener('fetch', function (event) {
   // 2. Panggilan ke Apps Script selalu lewat jaringan — jangan pernah di-cache.
   if (url.hostname.indexOf('script.google.com') >= 0) return;
 
-  // 3. Ubin peta: simpan agar area yang pernah dibuka tetap tampil tanpa sinyal.
-  if (hostPeta(url.hostname)) {
-    event.respondWith(
-      cacheDuluLalauJaringan(req, CACHE_PETA, BATAS_PETA).catch(function () {
-        return new Response('', { status: 504, statusText: 'Ubin peta tidak tersedia offline.' });
-      })
-    );
-    return;
-  }
+  // 3. Ubin peta: diteruskan apa adanya — lihat catatan lisensi di atas.
+  if (hostUbinPeta(url.hostname)) return;
 
   // 4. Foto profil dari Drive: sama, cache-first dengan batas jumlah.
   if (hostFoto(url.hostname)) {
@@ -138,7 +153,7 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // 5. Pustaka peta & pemutar video dari CDN: cache-first agar peta tetap terbuka offline.
+  // 5. Pustaka cadangan dari CDN: cache-first bila berkas lokal gagal dimuat.
   if (url.hostname.indexOf('unpkg.com') >= 0 || url.hostname.indexOf('cdn.jsdelivr.net') >= 0) {
     event.respondWith(
       cacheDuluLalauJaringan(req, CACHE_VERSION, 9999).catch(function () {

@@ -330,6 +330,54 @@ main{max-width:1200px;margin:0 auto;padding:14px}
 
 <script>
 /* ============================================================
+ * QR CODE GENERATOR — Kazuhiko Arase, lisensi MIT
+ *
+ * Disertakan langsung di dalam bundel (bukan dimuat dari CDN) supaya
+ * kartu warga tetap bisa menampilkan QR di pos jaga yang tidak bersinyal.
+ * Menggantikan pemakaian api.qrserver.com pada versi sebelumnya.
+ *
+ * Copyright (c) 2009 Kazuhiko Arase — http://www.d-project.com/
+ * Licensed under the MIT license.
+ * "QR Code" adalah merek terdaftar DENSO WAVE INCORPORATED.
+ * Teks lisensi lengkap ada di lib/LISENSI-PIHAK-KETIGA.txt
+ * ============================================================ */
+var __qrModule = {exports:{}};
+(function(module, exports){
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(o*r,n*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});
+})(__qrModule, __qrModule.exports);
+var qrcode = __qrModule.exports;
+
+/**
+ * Bentuk QR sebagai SVG. Dipakai kartu digital warga.
+ * Mengembalikan '' bila pustaka gagal atau teksnya kosong, supaya
+ * pemanggil bisa menampilkan token dalam bentuk teks sebagai cadangan.
+ */
+function qrSvg(teks, px, margin){
+  teks = String(teks == null ? '' : teks);
+  if(!teks) return '';
+  px = px || 200;
+  margin = (margin == null) ? 4 : margin;
+  try{
+    var q = qrcode(0, 'M');          // 0 = pilih versi terkecil yang muat
+    q.addData(teks);
+    q.make();
+    var n = q.getModuleCount(), total = n + margin * 2, d = '', r, c;
+    for(r = 0; r < n; r++){
+      for(c = 0; c < n; c++){
+        if(q.isDark(r, c)) d += 'M' + (c + margin) + ' ' + (r + margin) + 'h1v1h-1z';
+      }
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + px + '" height="' + px +
+      '" viewBox="0 0 ' + total + ' ' + total + '" shape-rendering="crispEdges" ' +
+      'role="img" aria-label="Kode QR kartu warga">' +
+      '<rect width="' + total + '" height="' + total + '" fill="#ffffff"/>' +
+      '<path d="' + d + '" fill="#000000"/></svg>';
+  }catch(e){
+    return '';
+  }
+}
+
+/* ============================================================
  * WargaNet RT/RW — Frontend (vanilla JS, dua mode)
  *   Mode GAS : google.script.run
  *   Mode PWA : fetch() ke URL /exec (Content-Type text/plain → tanpa preflight CORS)
@@ -386,10 +434,13 @@ var S = {
   ready:false, online:navigator.onLine, role:'warga', tab:'overview',
   settings:{appTitle:'WargaNet RT 05',appSubtitle:'Villa Harmony',managerPin:'1234',
             iuranNominal:'150000',namaRT:'RT 05 / RW 02',
-            petaLat:'-6.9034',petaLng:'107.6181',petaZoom:'18',petaBasemap:'satelit'},
+            petaLat:'-6.9034',petaLng:'107.6181',petaZoom:'18',petaBasemap:'grid',
+            petaPenyedia:'',petaKunci:'',petaUrlKustom:'',petaNamaKustom:'',
+            petaZoomKustom:'19',petaKreditKustom:''},
   warga:[],pengurus:[],iuran:[],kas:[],aset:[],pengaduan:[],voting:[],
   pengumuman:[],diskusi:[],patroli:[],panic:[],logs:[],
   bidang:[], cctv:[], patroliSesi:[], anggota:[],
+  lisensi:{aktif:true, jenis:'percobaan', pesan:''},
   aiEnabled:false, me:null, outbox:[], aiChat:[]
 };
 
@@ -432,7 +483,7 @@ function applyBootstrap(d, fromCache){
   if(!d) return;
   ['settings','warga','pengurus','iuran','kas','aset','pengaduan','voting',
    'pengumuman','diskusi','patroli','panic','logs',
-   'bidang','cctv','patroliSesi','anggota'].forEach(function(k){
+   'bidang','cctv','patroliSesi','anggota','lisensi'].forEach(function(k){
     if(d[k] !== undefined) S[k] = d[k];
   });
   if(d.aiEnabled !== undefined) S.aiEnabled = d.aiEnabled;
@@ -629,10 +680,24 @@ function luasTeks(m2){
 /* ============================================================
  * LEAFLET — dimuat sesuai kebutuhan dari CDN
  * ============================================================ */
-var LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-var LEAFLET_JS  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+/* Pustaka disertakan dalam paket (folder lib/) supaya aplikasi tidak
+   bergantung pada CDN pihak ketiga saat dijual. Alamat CDN tetap disimpan
+   sebagai cadangan bila berkas lokal tidak ditemukan — misalnya saat
+   dijalankan langsung dari Apps Script tanpa GitHub Pages. */
+var LEAFLET_CSS = 'lib/leaflet.css';
+var LEAFLET_JS  = 'lib/leaflet.js';
+var LEAFLET_CSS_CDN = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+var LEAFLET_JS_CDN  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 var _leafletP = null;
 
+/**
+ * Sediakan Leaflet.
+ *
+ * Pada bundel Apps Script, Leaflet sudah tertanam di dalam halaman sehingga
+ * fungsi ini langsung selesai tanpa permintaan jaringan apa pun. Pada bundel
+ * GitHub Pages, berkas lokal lib/ dicoba lebih dulu; CDN hanya dipakai bila
+ * berkas lokal benar-benar tidak ada.
+ */
 function ensureLeaflet(){
   if(typeof L !== 'undefined') return Promise.resolve(L);
   if(_leafletP) return _leafletP;
@@ -640,48 +705,261 @@ function ensureLeaflet(){
     if(!document.getElementById('leafletCss')){
       var lk = document.createElement('link');
       lk.id='leafletCss'; lk.rel='stylesheet'; lk.href=LEAFLET_CSS;
+      lk.onerror = function(){ lk.href = LEAFLET_CSS_CDN; };
       document.head.appendChild(lk);
     }
-    var sc = document.createElement('script');
-    sc.src = LEAFLET_JS; sc.async = true;
-    sc.onload  = function(){ (typeof L!=='undefined') ? resolve(L) : reject(new Error('Leaflet tidak termuat.')); };
-    sc.onerror = function(){ _leafletP = null; reject(new Error('Peta gagal dimuat — perlu koneksi internet.')); };
-    document.head.appendChild(sc);
+    function muat(src, cadangan){
+      var sc = document.createElement('script');
+      sc.src = src; sc.async = true;
+      sc.onload  = function(){
+        (typeof L !== 'undefined') ? resolve(L) : reject(new Error('Leaflet tidak termuat.'));
+      };
+      sc.onerror = function(){
+        if(cadangan){ muat(cadangan, null); return; }
+        _leafletP = null;
+        reject(new Error('Peta gagal dimuat — berkas lib/leaflet.js tidak ditemukan dan CDN tidak dapat dijangkau.'));
+      };
+      document.head.appendChild(sc);
+    }
+    muat(LEAFLET_JS, LEAFLET_JS_CDN);
   });
   return _leafletP;
 }
 
-/* Batas perbesaran peta.
-   Penyedia ubin hanya menyediakan gambar sampai level 17–19. Di atas itu
-   Leaflet membesarkan ubin yang sudah ada — gambar memang melunak, tetapi
-   pemetaan batas persil dan pemantauan posisi petugas jadi jauh lebih teliti. */
+/**
+ * PETA DASAR — MODEL "BAWA KUNCI SENDIRI".
+ *
+ * Versi sebelumnya menanamkan tiga layanan ubin pihak ketiga langsung di kode:
+ * Esri World Imagery lewat server.arcgisonline.com, tile.openstreetmap.org, dan
+ * tile.opentopomap.org. Ketiganya tidak boleh dipakai begitu saja pada produk
+ * yang dijual:
+ *
+ *   - Ubin OpenStreetMap dijalankan sukarelawan. Kebijakannya melarang
+ *     pengunduhan massal dan penyimpanan untuk pemakaian luring, serta
+ *     menyatakan akses layanan komersial dapat dicabut sewaktu-waktu.
+ *   - Citra Esri lewat server.arcgisonline.com bukan basemap bebas pakai;
+ *     ketentuan Esri mensyaratkan langganan ArcGIS dan token.
+ *   - OpenTopoMap juga server sukarelawan dengan batasan serupa.
+ *
+ * Karena itu tidak ada satu pun layanan ubin yang tertanam di sini. Peta dasar
+ * daring baru aktif setelah pemilik sistem memasukkan KUNCI API MILIKNYA SENDIRI
+ * lewat Pengaturan. Yang selalu tersedia tanpa kunci dan tanpa risiko lisensi
+ * adalah Peta Grid: digambar sendiri di perangkat, tanpa server mana pun.
+ */
+
 var ZOOM_MAKS  = 22;   // batas atas peta
 var ZOOM_GPS   = 20;   // saat melompat ke posisi GPS
 var ZOOM_IKUT  = 20;   // saat mengikuti petugas secara otomatis
 var ZOOM_BIDANG = 21;  // saat menyorot satu bidang
 
-/** Definisi basemap. Citra satelit dari Esri World Imagery. */
-function basemapDefs(){
-  return {
-    jalan: {
-      nama:'Peta Jalan (OSM)',
-      url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      opt:{maxZoom:ZOOM_MAKS, maxNativeZoom:19,
-           attribution:'&copy; Kontributor OpenStreetMap'}
-    },
-    satelit: {
-      nama:'Citra Satelit',
-      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      opt:{maxZoom:ZOOM_MAKS, maxNativeZoom:19,
-           attribution:'Citra &copy; Esri, Maxar, Earthstar Geographics'}
-    },
-    topo: {
-      nama:'Topografi',
-      url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-      opt:{maxZoom:ZOOM_MAKS, maxNativeZoom:17,
-           attribution:'&copy; OpenTopoMap, Kontributor OSM'}
+/** Penyedia yang didukung beserta cara menyusun alamat ubinnya. */
+var PENYEDIA_PETA = {
+  maptiler: {
+    nama: 'MapTiler',
+    daftar: 'https://cloud.maptiler.com/account/keys/',
+    peta: function(k){
+      return {
+        satelit: {nama:'Citra Satelit (MapTiler)', maxNativeZoom:20,
+                  url:'https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key='+k,
+                  kredit:'&copy; MapTiler &copy; Kontributor OpenStreetMap'},
+        jalan:   {nama:'Peta Jalan (MapTiler)', maxNativeZoom:20,
+                  url:'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key='+k,
+                  kredit:'&copy; MapTiler &copy; Kontributor OpenStreetMap'}
+      };
     }
+  },
+  esri: {
+    nama: 'Esri ArcGIS',
+    daftar: 'https://developers.arcgis.com/api-keys/',
+    peta: function(k){
+      return {
+        satelit: {nama:'Citra Satelit (Esri)', maxNativeZoom:19,
+                  url:'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token='+k,
+                  kredit:'Citra &copy; Esri, Maxar, Earthstar Geographics'},
+        jalan:   {nama:'Peta Jalan (Esri)', maxNativeZoom:19,
+                  url:'https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}?token='+k,
+                  kredit:'&copy; Esri'}
+      };
+    }
+  },
+  mapbox: {
+    nama: 'Mapbox',
+    daftar: 'https://account.mapbox.com/access-tokens/',
+    peta: function(k){
+      return {
+        satelit: {nama:'Citra Satelit (Mapbox)', maxNativeZoom:20,
+                  url:'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token='+k,
+                  kredit:'&copy; Mapbox &copy; Kontributor OpenStreetMap'},
+        jalan:   {nama:'Peta Jalan (Mapbox)', maxNativeZoom:20,
+                  url:'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token='+k,
+                  kredit:'&copy; Mapbox &copy; Kontributor OpenStreetMap'}
+      };
+    }
+  }
+};
+
+/**
+ * Susun daftar peta dasar yang tersedia saat ini.
+ * Peta Grid selalu ada; sisanya bergantung pada pengaturan pemilik sistem.
+ */
+/* ------------------------------------------------------------------
+ * SUMBER PETA KUSTOM
+ *
+ * Tiga bentuk yang lazim dipakai instansi dan perusahaan di Indonesia:
+ *
+ *   XYZ    — pola ubin biasa .../{z}/{x}/{y}.png
+ *   ArcGIS — layanan ArcGIS REST. Perhatikan urutan sumbunya TERBALIK:
+ *            .../MapServer/tile/{z}/{y}/{x} (baris dulu, baru kolom).
+ *            Banyak instansi hanya memberi alamat sampai /MapServer,
+ *            jadi sisanya dilengkapi sendiri oleh aplikasi.
+ *   WMS    — layanan OGC. Butuh nama lapisan, bukan pola ubin.
+ * ------------------------------------------------------------------ */
+var JENIS_PETA_KUSTOM = {
+  xyz:    {nama:'XYZ / TMS (pola ubin biasa)',
+           contoh:'https://server-anda.id/tiles/{z}/{x}/{y}.png'},
+  arcgis: {nama:'ArcGIS REST (MapServer)',
+           contoh:'https://geoservices.contoh.go.id/arcgis/rest/services/NAMA/MapServer'},
+  wms:    {nama:'WMS (OGC)',
+           contoh:'https://server-anda.id/geoserver/wms'}
+};
+
+/**
+ * Rapikan alamat ArcGIS REST menjadi pola ubin yang dimengerti Leaflet.
+ * Menerima alamat sampai /MapServer maupun yang sudah lengkap.
+ * Mengembalikan '' bila jelas bukan alamat ArcGIS REST.
+ */
+function urlArcgisUbin(url){
+  var u = String(url || '').trim().replace(/\/+$/, '');
+  if(!/^https?:\/\//i.test(u)) return '';
+
+  /* sudah memuat pola ubin — pakai apa adanya */
+  if(/\{z\}/i.test(u) && /\{x\}/i.test(u) && /\{y\}/i.test(u)) return u;
+
+  /* buang ekor yang sering ikut tersalin dari peramban */
+  u = u.replace(/\/(export|exportImage|tile|WMTS)(\/.*)?$/i, '');
+
+  if(/\/MapServer$/i.test(u) || /\/ImageServer$/i.test(u)){
+    return u + '/tile/{z}/{y}/{x}';
+  }
+  return '';
+}
+
+/** Pecah alamat WMS menjadi alamat dasar dan daftar lapisannya. */
+function uraiWms(url, lapisan){
+  var u = String(url || '').trim();
+  if(!/^https?:\/\//i.test(u)) return null;
+
+  var nama = String(lapisan || '').trim();
+  var tanya = u.indexOf('?');
+
+  /* Bila pengguna menempel URL GetMap lengkap, ambil layers dari sana. */
+  if(tanya >= 0){
+    var q = u.slice(tanya + 1);
+    u = u.slice(0, tanya);
+    var m = q.match(/(?:^|&)layers=([^&]+)/i);
+    if(m && !nama) nama = decodeURIComponent(m[1]);
+  }
+  if(!nama) return null;
+  return {url:u, layers:nama};
+}
+
+function basemapDefs(){
+  var out = {
+    grid: {nama:'Peta Grid (tanpa internet)', jenis:'grid',
+           kredit:'Peta grid lokal — tanpa layanan pihak ketiga'}
   };
+
+  var kode = String(S.settings.petaPenyedia || '').trim();
+  var kunci = String(S.settings.petaKunci || '').trim();
+
+  if(kode === 'kustom'){
+    var u = String(S.settings.petaUrlKustom || '').trim();
+    var jenis = String(S.settings.petaJenisKustom || 'xyz').trim();
+    var dasar = {
+      nama: S.settings.petaNamaKustom || 'Peta Kustom',
+      maxNativeZoom: Number(S.settings.petaZoomKustom) || 19,
+      kredit: S.settings.petaKreditKustom || 'Sumber peta milik pengguna'
+    };
+
+    if(jenis === 'arcgis'){
+      var ua = urlArcgisUbin(u);
+      if(ua){ dasar.url = ua; dasar.jenis = 'xyz'; out.kustom = dasar; }
+
+    }else if(jenis === 'wms'){
+      var w = uraiWms(u, S.settings.petaLapisanKustom);
+      if(w){
+        dasar.jenis = 'wms';
+        dasar.url = w.url;
+        dasar.layers = w.layers;
+        out.kustom = dasar;
+      }
+
+    }else if(/^https?:\/\//i.test(u)){
+      dasar.url = u; dasar.jenis = 'xyz'; out.kustom = dasar;
+    }
+  }else if(PENYEDIA_PETA[kode] && kunci){
+    var set = PENYEDIA_PETA[kode].peta(kunci);
+    for(var k in set) if(set.hasOwnProperty(k)) out[k] = set[k];
+  }
+  return out;
+}
+
+/** Benar bila peta dasar daring belum disiapkan pemilik sistem. */
+function petaDasarBelumDisetel(){
+  return Object.keys(basemapDefs()).length <= 1;
+}
+
+/**
+ * PETA GRID — lapisan yang digambar sendiri di perangkat.
+ *
+ * Bukan sekadar layar kosong: menggambar kisi berjarak tetap dalam meter
+ * beserta angka koordinatnya, sehingga bidang persil dan posisi petugas tetap
+ * punya rujukan ruang walau tidak ada citra sama sekali. Tanpa server, tanpa
+ * kuota, tanpa ketentuan pihak mana pun.
+ */
+function buatLapisanGrid(){
+  if(typeof L === 'undefined') return null;
+
+  var Grid = L.GridLayer.extend({
+    createTile: function(coords){
+      var ubin = document.createElement('canvas');
+      var n = this.getTileSize();
+      ubin.width = n.x; ubin.height = n.y;
+      var g = ubin.getContext('2d');
+
+      // latar
+      g.fillStyle = '#eef2f7';
+      g.fillRect(0, 0, n.x, n.y);
+
+      // batas ubin
+      g.strokeStyle = '#cbd5e1';
+      g.lineWidth = 1;
+      g.strokeRect(0.5, 0.5, n.x - 1, n.y - 1);
+
+      // kisi dalam ubin
+      g.strokeStyle = '#dbe3ec';
+      var langkah = n.x / 4;
+      for(var i = 1; i < 4; i++){
+        g.beginPath();
+        g.moveTo(i * langkah, 0); g.lineTo(i * langkah, n.y);
+        g.moveTo(0, i * langkah); g.lineTo(n.x, i * langkah);
+        g.stroke();
+      }
+
+      // koordinat sudut kiri-atas ubin
+      try{
+        var pusat = this._map.unproject(
+          [coords.x * n.x, coords.y * n.y], coords.z);
+        g.fillStyle = '#94a3b8';
+        g.font = '10px system-ui, sans-serif';
+        g.fillText(pusat.lat.toFixed(4) + ', ' + pusat.lng.toFixed(4), 6, 14);
+      }catch(e){}
+
+      return ubin;
+    }
+  });
+
+  return new Grid({maxZoom: ZOOM_MAKS, attribution: 'Peta grid lokal'});
 }
 
 /* ---------- identitas perangkat untuk pelacakan patroli ---------- */
@@ -867,7 +1145,8 @@ var ONLINE_ONLY = {verify_pin:1, iuran_generate:1, iuran_reminder:1,
                    ai_financial_summary:1, ai_complaint:1, ai_assistant:1, bootstrap:1,
                    foto_upload:1, patroli_sesi_start:1, patroli_sesi_stop:1,
                    patroli_ping:1, patroli_live:1,
-                   kartu_buka:1, kartu_pin_ubah:1, kartu_pin_reset:1, kartu_pin_status:1};
+                   kartu_buka:1, kartu_pin_ubah:1, kartu_pin_reset:1, kartu_pin_status:1,
+                   lisensi_status:1, lisensi_aktifkan:1, lisensi_hapus:1};
 
 /**
  * Titik masuk tunggal semua mutasi.
@@ -1056,7 +1335,9 @@ function formModal(title, fields, initial, onSubmit, wide){
     } else {
       h += '<input class="inp" id="f_'+f.k+'" type="'+(f.t||'text')+'" value="'+esc(v)+'" placeholder="'+esc(f.ph||'')+'">';
     }
-    if(f.help) h += '<div class="sub" style="margin-top:3px">'+esc(f.help)+'</div>';
+    /* Diberi id agar keterangan dapat diperbarui secara langsung — dipakai
+       misalnya untuk memperingatkan saat NIK anak-anak diisi. */
+    if(f.help) h += '<div class="sub" id="f_help_'+f.k+'" style="margin-top:3px">'+esc(f.help)+'</div>';
     h += '</div>';
   });
   openModal(title, h,
@@ -1307,7 +1588,7 @@ function render(){
 
   lepasPeta();          // buang instance peta lama sebelum DOM ditimpa
   hentikanPollLive();
-  v.innerHTML = fn();
+  v.innerHTML = pitaLisensi() + fn();
 
   /* pemasangan komponen yang butuh DOM sudah jadi */
   if(S.tab === 'patrol'){ pasangPeta(); mulaiPollLive(); }
@@ -1520,8 +1801,10 @@ function wargaFields(){
     {k:'nama',l:'Nama Kepala Keluarga',t:'text',req:true},
     {k:'fotoUrl',l:'Foto Profil',t:'foto',
      help:'Dapat diambil langsung dari kamera HP atau dipilih dari galeri.'},
-    {k:'nik',l:'NIK Kepala Keluarga',t:'text',ph:'16 angka',
-     help:'Tampil tersamar demi privasi. Biarkan apa adanya bila tidak ingin mengubahnya.'},
+    {k:'nik',l:'NIK Kepala Keluarga (opsional)',t:'text',ph:'boleh dikosongkan',
+     help:'Isi hanya bila RT Anda benar-benar memerlukannya. Untuk memastikan seseorang warga '+
+          'sini, nama, alamat, dan foto biasanya sudah cukup. Nilai yang tersimpan ditampilkan '+
+          'tersamar; biarkan apa adanya bila tidak ingin mengubahnya.'},
     {k:'jenisKelamin',l:'Jenis Kelamin',t:'select',opt:['','Laki-laki','Perempuan']},
     {k:'tempatLahir',l:'Tempat Lahir',t:'text'},
     {k:'tanggalLahir',l:'Tanggal Lahir',t:'date',help:'Umur dihitung otomatis dari tanggal ini.'},
@@ -1885,6 +2168,34 @@ function waAnggota(id){
 }
 
 /* ---------- formulir tambah/ubah anggota ---------- */
+/**
+ * Peringatan hidup saat NIK diisi untuk anggota yang tampaknya anak-anak.
+ * Sekadar mengingatkan — tidak memblokir, karena sebagian RT memang
+ * memerlukannya untuk keperluan tertentu.
+ */
+function periksaNikAnak(){
+  var el = $('f_nik'), pesan = $('f_help_nik');
+  if(!el || !pesan) return;
+
+  var isi = String(el.value || '').trim();
+  var hub = $('f_hubungan') ? $('f_hubungan').value : '';
+  var tgl = $('f_tanggalLahir') ? $('f_tanggalLahir').value : '';
+  var umur = umurDari(tgl);
+  var thn = umur ? parseInt(umur, 10) : null;
+
+  var anak = /anak|cucu/i.test(hub) || (thn !== null && thn < 17);
+
+  if(isi && isi.indexOf('•') < 0 && anak){
+    pesan.innerHTML = '<b style="color:var(--red)">Pertimbangkan mengosongkan ruas ini.</b> ' +
+      'NIK anak termasuk data pribadi yang paling dilindungi, dan administrasi RT hampir '+
+      'tidak pernah memerlukannya. Bila tetap diisi, pastikan orang tuanya tahu dan setuju.';
+  }else{
+    pesan.textContent = 'Sebaiknya dikosongkan, terutama untuk anak-anak. Administrasi RT ' +
+      'jarang benar-benar memerlukan NIK tiap anggota keluarga, sementara Anda ikut ' +
+      'bertanggung jawab menjaganya. Nilai tersimpan ditampilkan tersamar.';
+  }
+}
+
 function formAnggota(wargaId, id){
   if(!isPengurus()){ toast('Hanya pengurus yang dapat mengubah data keluarga.','err'); return; }
   var a = id ? (S.anggota||[]).filter(function(x){ return x.id === id; })[0] : null;
@@ -1899,8 +2210,10 @@ function formAnggota(wargaId, id){
      help:'Boleh diambil langsung dari kamera. Ketuk foto di daftar untuk memperbesar.'},
     {k:'hubungan',        l:'Status Hubungan dalam Keluarga', t:'select', opt:HUBUNGAN},
     {k:'jenisKelamin',    l:'Jenis Kelamin', t:'select', opt:['Laki-laki','Perempuan']},
-    {k:'nik',             l:'NIK', t:'text', ph:'16 angka',
-     help:'Tampil tersamar demi privasi. Kosongkan bila tidak ingin mengubahnya.'},
+    {k:'nik',             l:'NIK (opsional)', t:'text', ph:'boleh dikosongkan',
+     help:'Sebaiknya dikosongkan, terutama untuk anak-anak. Administrasi RT jarang benar-benar '+
+          'memerlukan NIK tiap anggota keluarga, sementara Anda ikut bertanggung jawab '+
+          'menjaganya. Nilai tersimpan ditampilkan tersamar.'},
     {k:'tempatLahir',     l:'Tempat Lahir', t:'text'},
     {k:'tanggalLahir',    l:'Tanggal Lahir', t:'date'},
     {k:'agama',           l:'Agama', t:'select',
@@ -1937,6 +2250,18 @@ function formAnggota(wargaId, id){
       })
       .catch(function(){});
   }, true);
+
+  /* Pantau isian yang menentukan apakah peringatan NIK anak perlu tampil. */
+  setTimeout(function(){
+    ['f_nik', 'f_hubungan', 'f_tanggalLahir'].forEach(function(id){
+      var el = $(id);
+      if(el){
+        el.addEventListener('input', periksaNikAnak);
+        el.addEventListener('change', periksaNikAnak);
+      }
+    });
+    periksaNikAnak();
+  }, 90);
 }
 
 function hapusAnggota(id){
@@ -2154,7 +2479,7 @@ function kirimPinPengurus(){
 
 /** Tampilkan kartu dari data yang sudah terverifikasi. */
 function tampilkanKartu(w){
-  var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(w.qrCodeToken||w.id);
+  var qrGambar = qrSvg(w.qrCodeToken || w.id, 180);
   openModal('Kartu Digital Warga',
     '<div class="card flat" style="background:#111;color:#fff;text-align:center;border-color:#000">'+
       '<div style="font-size:10px;letter-spacing:1.4px;font-weight:900">'+esc(S.settings.appTitle)+'</div>'+
@@ -2174,9 +2499,9 @@ function tampilkanKartu(w){
       })()+
     '</div>'+
     '<div style="text-align:center">'+
-      (S.online
-        ? '<img src="'+qrSrc+'" alt="QR" width="180" height="180" style="border:2px solid #000;background:#fff">'
-        : '<div class="qrbox">QR memerlukan koneksi.<br><br>Token:<br>'+esc(w.qrCodeToken)+'</div>')+
+      (qrGambar
+        ? '<div style="display:inline-block;border:2px solid #000;background:#fff;line-height:0">'+qrGambar+'</div>'
+        : '<div class="qrbox">Kode QR tidak dapat dibentuk.<br><br>Token:<br>'+esc(w.qrCodeToken)+'</div>')+
       '<div class="sub" style="margin-top:6px">Token akses: <b>'+esc(w.qrCodeToken)+'</b></div>'+
     '</div>'+
     kartuKeluarga(w)+
@@ -2961,6 +3286,17 @@ function viewPatrol(){
           '<button class="btn sm" onclick="simpanTampilanPeta()" title="Jadikan posisi & perbesaran peta saat ini sebagai tampilan awal">📌 Simpan Tampilan</button>'
         : '')+
     '</div>'+
+    (petaDasarBelumDisetel()
+      ? '<div class="mapnote">🗺️ Peta dasar daring belum disiapkan, jadi yang tampil adalah '+
+        '<b>Peta Grid</b> — kisi koordinat yang digambar sendiri di perangkat. Seluruh fungsi peta '+
+        'tetap berjalan: bidang persil, pos jaga, dan posisi petugas tetap tergambar pada '+
+        'koordinat yang benar.'+
+        (isPengurus()
+          ? ' Untuk menampilkan citra satelit, masukkan kunci API Anda sendiri lewat '+
+            '<b>⚙️ Pengaturan → Peta Dasar</b>.'
+          : ' Hubungi pengurus bila citra satelit diperlukan.')+
+        '</div>'
+      : '')+
     '<div class="sub" style="margin-bottom:8px">Tombol di atas hanya menyalakan dan mematikan '+
       '<b>lapisan tampilan</b> peta — tidak mengubah data apa pun. Matikan lapisan yang sedang '+
       'tidak diperlukan agar peta lebih lega.</div>'+
@@ -3131,10 +3467,40 @@ function lepasPeta(){
 
 function terapkanBasemap(){
   if(!MAP.inst) return;
-  var d = basemapDefs()[MAPCFG.base] || basemapDefs().jalan;
+  var semua = basemapDefs();
+  var d = semua[MAPCFG.base];
+
+  /* Pilihan tersimpan bisa jadi menunjuk penyedia yang kuncinya sudah dicabut.
+     Dalam hal itu jatuh ke Peta Grid — selalu tersedia, tanpa kunci apa pun. */
+  if(!d){
+    MAPCFG.base = 'grid';
+    d = semua.grid;
+  }
+
   if(MAP.base){ try{ MAP.inst.removeLayer(MAP.base); }catch(e){} }
-  MAP.base = L.tileLayer(d.url, d.opt).addTo(MAP.inst);
-  MAP.base.bringToBack();
+
+  if(d.jenis === 'grid'){
+    MAP.base = buatLapisanGrid();
+    if(MAP.base) MAP.base.addTo(MAP.inst);
+  }else if(d.jenis === 'wms'){
+    MAP.base = L.tileLayer.wms(d.url, {
+      layers: d.layers,
+      format: 'image/png',
+      transparent: false,
+      version: '1.1.1',
+      maxZoom: ZOOM_MAKS,
+      attribution: d.kredit || '',
+      crossOrigin: true
+    }).addTo(MAP.inst);
+  }else{
+    MAP.base = L.tileLayer(d.url, {
+      maxZoom: ZOOM_MAKS,
+      maxNativeZoom: d.maxNativeZoom || 19,
+      attribution: d.kredit || '',
+      crossOrigin: true
+    }).addTo(MAP.inst);
+  }
+  if(MAP.base) MAP.base.bringToBack();
 }
 
 function gantiBasemap(k){
@@ -3850,7 +4216,8 @@ function checkinPatroli(id){
  * 9. CCTV — tautan siaran yang dapat ditonton & dibagikan warga
  * ============================================================ */
 var TIPE_CCTV = ['YouTube Live','HLS (.m3u8)','MJPEG / Snapshot','Halaman Web (iframe)','RTSP (butuh aplikasi)'];
-var HLS_CDN = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js';
+var HLS_LOKAL = 'lib/hls.min.js';
+var HLS_CDN   = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js';
 var _hlsP = null, _snapTimer = null;
 
 /** Hanya izinkan tautan http/https — cegah javascript: dan skema aneh lainnya. */
@@ -3995,15 +4362,61 @@ function camPesan(id, teks, sub){
     (sub ? '<br><span style="font-size:11px;font-weight:600">'+esc(sub)+'</span>' : '')+'</div>';
 }
 
+/**
+ * Sediakan pemutar HLS.
+ *
+ * Urutan yang dicoba:
+ *   1. sumber tertanam di dalam halaman (bundel Apps Script) — tanpa jaringan;
+ *   2. berkas lib/hls.min.js (bundel GitHub Pages) — tanpa jaringan luar;
+ *   3. CDN, hanya bila keduanya tidak ada.
+ *
+ * Sumber tertanam disimpan sebagai teks biasa lalu dijalankan di sini,
+ * supaya halaman tidak perlu mengurai 290 KB kode pada setiap pembukaan
+ * aplikasi padahal kebanyakan RT memakai YouTube Live, bukan HLS.
+ */
+function hlsTertanam(){
+  var el = document.getElementById('hlsSrc');
+  if(!el) return null;
+  var src = String(el.textContent || '');
+  return src.length > 10000 ? src : null;   // ada isinya, bukan sekadar komentar
+}
+
 function ensureHls(){
   if(typeof Hls !== 'undefined') return Promise.resolve(Hls);
   if(_hlsP) return _hlsP;
+
+  var tertanam = hlsTertanam();
+  if(tertanam){
+    _hlsP = new Promise(function(resolve, reject){
+      try{
+        /* Dijalankan pada lingkup global agar UMD hls.js memasang window.Hls
+           persis seperti bila dimuat lewat tag <script> biasa. */
+        new Function(tertanam).call(window);
+        (typeof Hls !== 'undefined')
+          ? resolve(Hls)
+          : reject(new Error('Pemutar HLS tertanam tidak dapat dijalankan.'));
+      }catch(e){
+        _hlsP = null;
+        reject(new Error('Pemutar HLS tertanam gagal: ' + e.message));
+      }
+    });
+    return _hlsP;
+  }
   _hlsP = new Promise(function(resolve, reject){
-    var sc = document.createElement('script');
-    sc.src = HLS_CDN; sc.async = true;
-    sc.onload  = function(){ (typeof Hls !== 'undefined') ? resolve(Hls) : reject(new Error('hls.js tidak termuat.')); };
-    sc.onerror = function(){ _hlsP = null; reject(new Error('Pemutar HLS gagal dimuat.')); };
-    document.head.appendChild(sc);
+    function muat(src, cadangan){
+      var sc = document.createElement('script');
+      sc.src = src; sc.async = true;
+      sc.onload  = function(){
+        (typeof Hls !== 'undefined') ? resolve(Hls) : reject(new Error('hls.js tidak termuat.'));
+      };
+      sc.onerror = function(){
+        if(cadangan){ muat(cadangan, null); return; }
+        _hlsP = null;
+        reject(new Error('Pemutar HLS gagal dimuat.'));
+      };
+      document.head.appendChild(sc);
+    }
+    muat(HLS_LOKAL, HLS_CDN);
   });
   return _hlsP;
 }
@@ -4568,7 +4981,53 @@ function openSettings(){
       '<div><label class="f">Nama RT/RW</label><input class="inp" id="setRT" value="'+esc(S.settings.namaRT||'')+'"></div>'+
       '<div><label class="f">Nominal Iuran Standar (Rp)</label><input class="inp" id="setNom" type="number" value="'+esc(S.settings.iuranNominal)+'"></div>'+
       '<div><label class="f">PIN Pengurus (4–8 digit)</label><input class="inp" id="setPin" value="'+esc(S.settings.managerPin)+'"></div>'+
-      '<div class="card flat" style="background:#f8fafc"><b style="font-size:12px">🗺️ Tampilan Awal Peta</b>'+
+      panelLisensi()+
+      '<div class="card flat" style="background:#fef9c3"><b style="font-size:12px">🗺️ Peta Dasar</b>'+
+        '<div class="sub" style="margin-top:4px">Aplikasi ini tidak menyertakan layanan peta mana pun. '+
+        'Untuk menampilkan citra satelit, daftarkan kunci API atas nama Anda sendiri — dengan begitu '+
+        'kuota dan ketentuan layanannya berada di tangan Anda, bukan menumpang layanan pihak lain.</div>'+
+        '<div class="grid g2" style="margin-top:8px">'+
+          '<div><label class="f">Penyedia</label>'+
+            '<select class="inp" id="setPenyedia" onchange="ubahPenyediaPeta(this.value)">'+
+              ['','maptiler','esri','mapbox','kustom'].map(function(k){
+                var nama = k==='' ? '— Tidak ada (hanya Peta Grid) —'
+                         : k==='kustom' ? 'URL Kustom (XYZ / ArcGIS)'
+                         : PENYEDIA_PETA[k].nama;
+                return '<option value="'+k+'"'+((S.settings.petaPenyedia||'')===k?' selected':'')+'>'+esc(nama)+'</option>';
+              }).join('')+
+            '</select></div>'+
+          '<div><label class="f">Kunci API</label>'+
+            '<input class="inp" id="setKunci" type="password" value="'+esc(S.settings.petaKunci||'')+'" '+
+            'placeholder="tempel kunci di sini"></div>'+
+        '</div>'+
+        '<div id="petaKustomBox" style="display:'+((S.settings.petaPenyedia==='kustom')?'block':'none')+'">'+
+          '<label class="f" style="margin-top:8px">Jenis Sumber</label>'+
+          '<select class="inp" id="setJenisKustom" onchange="ubahJenisKustom(this.value)">'+
+            Object.keys(JENIS_PETA_KUSTOM).map(function(j){
+              return '<option value="'+j+'"'+
+                (((S.settings.petaJenisKustom||'xyz')===j)?' selected':'')+'>'+
+                esc(JENIS_PETA_KUSTOM[j].nama)+'</option>';
+            }).join('')+
+          '</select>'+
+          '<label class="f" style="margin-top:8px">Alamat Layanan</label>'+
+          '<input class="inp" id="setUrlKustom" value="'+esc(S.settings.petaUrlKustom||'')+'" '+
+            'placeholder="'+esc((JENIS_PETA_KUSTOM[S.settings.petaJenisKustom||'xyz']||JENIS_PETA_KUSTOM.xyz).contoh)+'">'+
+          '<div class="sub" id="petaJenisHint">'+esc(petunjukJenisKustom(S.settings.petaJenisKustom||'xyz'))+'</div>'+
+          '<div id="wmsBox" style="display:'+((S.settings.petaJenisKustom==='wms')?'block':'none')+'">'+
+            '<label class="f" style="margin-top:8px">Nama Lapisan (WMS layers)</label>'+
+            '<input class="inp" id="setLapisanKustom" value="'+esc(S.settings.petaLapisanKustom||'')+'" '+
+              'placeholder="contoh: rbi:administrasi">'+
+          '</div>'+
+          '<div class="grid g2" style="margin-top:6px">'+
+            '<div><label class="f">Nama Tampilan</label>'+
+              '<input class="inp" id="setNamaKustom" value="'+esc(S.settings.petaNamaKustom||'')+'" placeholder="Citra Perusahaan"></div>'+
+            '<div><label class="f">Kredit / Atribusi</label>'+
+              '<input class="inp" id="setKreditKustom" value="'+esc(S.settings.petaKreditKustom||'')+'" placeholder="Sumber: …"></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="sub" id="petaDaftarLink" style="margin-top:6px">'+linkDaftarPenyedia()+'</div>'+
+      '</div>'+
+      '<div class="card flat" style="background:#f8fafc"><b style="font-size:12px">📍 Tampilan Awal Peta</b>'+
         '<div class="grid g3" style="margin-top:8px">'+
           '<div><label class="f">Lintang</label><input class="inp" id="setLat" value="'+esc(S.settings.petaLat||'')+'" placeholder="-6.903400"></div>'+
           '<div><label class="f">Bujur</label><input class="inp" id="setLng" value="'+esc(S.settings.petaLng||'')+'" placeholder="107.618100"></div>'+
@@ -4583,6 +5042,172 @@ function openSettings(){
     '<button class="btn" onclick="closeModal()">Tutup</button>'+
     '<button class="btn dark" onclick="simpanSettings()">Simpan</button>', true);
 }
+/* ============================================================
+ * LISENSI
+ * ============================================================ */
+
+function warnaLisensi(l){
+  if(l.jenis === 'berlisensi' && l.aktif) return '#dcfce7';
+  if(l.jenis === 'percobaan')  return '#fef9c3';
+  return '#fee2e2';
+}
+
+function panelLisensi(){
+  var l = S.lisensi || {aktif:true, jenis:'-', pesan:''};
+
+  /* Pemasangan yang belum disiapkan penyedia: aktivasi pasti gagal, jadi
+     lebih baik diberitahukan sejak awal daripada dicoba lalu bingung. */
+  if(l.kunciBelumDisetel){
+    return '<div class="card flat" style="background:#fee2e2;border-color:var(--red)">'+
+      '<b style="font-size:12.5px">⚠️ Sistem lisensi belum disiapkan penyedia</b>'+
+      '<div class="sub" style="margin-top:5px">Kunci publik pada berkas Lisensi.gs masih '+
+      'berisi nilai contoh, sehingga kunci lisensi apa pun akan ditolak. Aplikasi tetap '+
+      'berjalan dalam masa percobaan.</div>'+
+      '<div class="sub" style="margin-top:5px"><b>Untuk penyedia:</b> buka '+
+      '<b>tools/penerbit-lisensi.html</b>, tekan “Buat Pasangan Kunci Baru”, simpan kunci '+
+      'privatnya baik-baik, lalu tempel modulus kunci publiknya ke <b>LISENSI_N</b> di '+
+      'Lisensi.gs. Setelah itu jalankan menu <b>WargaNet ▸ Cek Kesiapan Jual</b>.</div>'+
+    '</div>';
+  }
+  var h = '<div class="card flat" style="background:'+warnaLisensi(l)+'">'+
+    '<div class="spread"><b style="font-size:12px">🔖 LISENSI</b>'+
+      '<span class="badge '+(l.aktif?'b-green':'b-red')+'">'+(l.aktif?'AKTIF':'TIDAK AKTIF')+'</span></div>'+
+    '<div class="sub" style="margin-top:6px">'+esc(l.pesan||'')+'</div>';
+
+  if(l.jenis === 'berlisensi'){
+    h += '<div class="sub" style="margin-top:4px">'+esc(l.rt||'')+' • paket '+esc(l.paket||'-')+
+         ' • '+num(l.jumlahKK)+' dari '+num(l.kk)+' KK</div>';
+  }else if(l.jenis === 'percobaan' || l.jenis === 'percobaan-habis'){
+    h += '<div class="sub" style="margin-top:4px">Masa percobaan dibatasi '+num(l.kk)+' KK; '+
+         'saat ini '+num(l.jumlahKK)+' KK tercatat.</div>';
+  }
+
+  if(!l.aktif){
+    h += '<div class="mapnote warn" style="margin-top:8px">Aplikasi dalam <b>mode hanya-baca</b>. '+
+      'Seluruh data lama tetap dapat dilihat, dicari, dan dicetak — hanya pencatatan data baru '+
+      'yang dihentikan sampai lisensi diaktifkan.</div>';
+  }
+
+  h += '<label class="f" style="margin-top:8px">Kunci Lisensi</label>'+
+    '<textarea class="inp" id="setLisensi" style="min-height:70px;font-size:11px;'+
+      'font-family:ui-monospace,monospace" placeholder="WARGANET-…"></textarea>'+
+    '<div class="row" style="margin-top:8px;flex-wrap:wrap">'+
+      '<button class="btn sm dark" onclick="aktifkanLisensi()">Aktifkan Lisensi</button>'+
+      (l.jenis === 'berlisensi'
+        ? '<button class="btn sm red" onclick="lepasLisensi()">Lepas Lisensi</button>' : '')+
+    '</div>'+
+    '<div class="sub" style="margin-top:6px" id="pesanLisensi">Kunci lisensi dikirim penyedia '+
+      'secara terpisah. Tempel seluruh barisnya, termasuk awalan WARGANET-.</div>'+
+  '</div>';
+  return h;
+}
+
+function aktifkanLisensi(){
+  var el = $('setLisensi');
+  var kunci = el ? el.value.trim() : '';
+  if(!kunci){ toast('Kunci lisensi belum diisi.','err'); return; }
+  if(!S.online){ toast('Aktivasi lisensi memerlukan koneksi.','err'); return; }
+
+  mintaPinPengurusLalu(function(pinP){
+    callServer('lisensi_aktifkan', {kunci:kunci, pinPengurus:pinP, aktorNama:(S.me?S.me.nama:'Pengurus')})
+      .then(function(st){
+        S.lisensi = st;
+        closeModal();
+        toast('Lisensi aktif sampai '+st.sampai+'.','ok');
+        return refresh();
+      })
+      .then(render)
+      .catch(function(err){
+        var p = $('pesanLisensi');
+        if(p){ p.textContent = err.message; p.style.color = 'var(--red)'; }
+        else toast(err.message,'err');
+      });
+  }, 'Aktivasi Lisensi');
+}
+
+function lepasLisensi(){
+  konfirmasi('Lepas kunci lisensi dari pemasangan ini? Aplikasi akan kembali ke masa percobaan '+
+             'dan mungkin langsung menjadi hanya-baca.', function(){
+    mintaPinPengurusLalu(function(pinP){
+      callServer('lisensi_hapus', {pinPengurus:pinP, aktorNama:(S.me?S.me.nama:'Pengurus')})
+        .then(function(st){
+          S.lisensi = st;
+          closeModal();
+          toast('Lisensi dilepas.','info');
+          return refresh();
+        })
+        .then(render)
+        .catch(function(err){ toast(err.message,'err'); });
+    }, 'Lepas Lisensi');
+  });
+}
+
+/** Pita peringatan di atas layar bila lisensi bermasalah. */
+function pitaLisensi(){
+  var l = S.lisensi;
+  if(!l || l.aktif) {
+    /* peringatan dini saat percobaan tinggal sedikit */
+    if(l && l.jenis === 'percobaan' && l.sisaHari <= 7){
+      return '<div class="mapnote" style="margin:0 0 10px">⏳ Masa percobaan tinggal '+
+        num(l.sisaHari)+' hari. Hubungi penyedia untuk melanjutkan.'+
+        (isPengurus() ? ' Kunci lisensi dipasang lewat ⚙️ Pengaturan ▸ Lisensi.' : '')+'</div>';
+    }
+    return '';
+  }
+  return '<div class="mapnote warn" style="margin:0 0 10px">🔖 <b>Mode hanya-baca.</b> '+
+    esc(l.pesan||'')+' Data lama tetap dapat dilihat dan dicetak.'+
+    (isPengurus() ? ' Aktifkan lisensi lewat ⚙️ Pengaturan ▸ Lisensi.' : '')+'</div>';
+}
+
+/** Tautan pendaftaran kunci, mengikuti penyedia yang sedang dipilih. */
+function linkDaftarPenyedia(){
+  var k = String(S.settings.petaPenyedia || '');
+  if(k === 'kustom'){
+    return 'Isi alamat ubin milik Anda sendiri — misalnya citra perusahaan, WMTS instansi, '+
+           'atau server ubin yang Anda jalankan sendiri.';
+  }
+  var p = PENYEDIA_PETA[k];
+  if(!p) return 'Tanpa penyedia, aplikasi memakai Peta Grid yang digambar sendiri di perangkat. '+
+                'Bebas biaya dan bebas ketentuan pihak ketiga.';
+  return 'Daftar kunci gratis di <b>'+esc(p.daftar)+'</b> — semua penyedia ini punya paket gratis '+
+         'yang lebih dari cukup untuk satu RT.';
+}
+
+/** Keterangan singkat sesuai jenis sumber yang dipilih. */
+function petunjukJenisKustom(j){
+  if(j === 'arcgis'){
+    return 'Tempel alamat sampai /MapServer saja — sisanya dilengkapi otomatis. ' +
+           'Layanan ArcGIS memakai urutan sumbu terbalik, dan aplikasi sudah menanganinya.';
+  }
+  if(j === 'wms'){
+    return 'Isi alamat endpoint WMS, lalu tulis nama lapisannya pada kotak di bawah. ' +
+           'Bila Anda menempel URL GetMap lengkap, nama lapisan diambil otomatis.';
+  }
+  return 'Pola ubin biasa. Gunakan penanda {z}, {x}, dan {y} sesuai alamat dari penyedia Anda.';
+}
+
+function ubahJenisKustom(j){
+  S.settings.petaJenisKustom = j;
+
+  var url = $('setUrlKustom');
+  var def = JENIS_PETA_KUSTOM[j] || JENIS_PETA_KUSTOM.xyz;
+  if(url) url.placeholder = def.contoh;
+
+  var hint = $('petaJenisHint');
+  if(hint) hint.textContent = petunjukJenisKustom(j);
+
+  var wms = $('wmsBox');
+  if(wms) wms.style.display = (j === 'wms') ? 'block' : 'none';
+}
+
+function ubahPenyediaPeta(k){
+  var box = $('petaKustomBox');
+  if(box) box.style.display = (k === 'kustom') ? 'block' : 'none';
+  S.settings.petaPenyedia = k;
+  var link = $('petaDaftarLink');
+  if(link) link.innerHTML = linkDaftarPenyedia();
+}
+
 function simpanSettings(){
   if($('setUrl')) setApiUrl($('setUrl').value);
   if(isPengurus() && $('setTitle')){
@@ -4593,6 +5218,13 @@ function simpanSettings(){
     if($('setLat'))  v.petaLat  = $('setLat').value;
     if($('setLng'))  v.petaLng  = $('setLng').value;
     if($('setZoom')) v.petaZoom = $('setZoom').value;
+    if($('setPenyedia'))    v.petaPenyedia    = $('setPenyedia').value;
+    if($('setKunci'))       v.petaKunci       = $('setKunci').value.trim();
+    if($('setJenisKustom')) v.petaJenisKustom = $('setJenisKustom').value;
+    if($('setLapisanKustom')) v.petaLapisanKustom = $('setLapisanKustom').value.trim();
+    if($('setUrlKustom'))   v.petaUrlKustom   = $('setUrlKustom').value.trim();
+    if($('setNamaKustom'))  v.petaNamaKustom  = $('setNamaKustom').value.trim();
+    if($('setKreditKustom'))v.petaKreditKustom= $('setKreditKustom').value.trim();
     closeModal();
     mutate('settings_update', v, {okMsg:'Pengaturan tersimpan.'}).then(render).catch(function(){});
     return;
