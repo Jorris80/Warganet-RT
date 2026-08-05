@@ -378,6 +378,133 @@ function qrSvg(teks, px, margin){
 }
 
 /* ============================================================
+ * SHA-256 (implementasi ringkas, tanpa pustaka luar)
+ *
+ * Dipakai kartu warga untuk membentuk kode QR yang berubah tiap 30 detik.
+ * Tidak memakai crypto.subtle karena antarmuka itu hanya tersedia pada
+ * konteks aman dan bekerja secara asinkron — sementara kode ini harus
+ * dapat dihitung seketika, termasuk saat aplikasi dibuka dari berkas
+ * lokal maupun tanpa sinyal.
+ *
+ * Hasilnya harus SAMA PERSIS dengan Utilities.computeDigest di sisi
+ * server, karena itulah dasar pemeriksaan kartu di pos jaga.
+ * ============================================================ */
+var __K256 = [
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+];
+
+/** Ubah teks UTF-8 menjadi larik byte. */
+function __utf8Bytes(teks){
+  var out = [], i, c;
+  for(i = 0; i < teks.length; i++){
+    c = teks.charCodeAt(i);
+    if(c < 0x80){
+      out.push(c);
+    }else if(c < 0x800){
+      out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+    }else if(c >= 0xd800 && c <= 0xdbff && i + 1 < teks.length){
+      var c2 = teks.charCodeAt(i + 1);
+      var cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00);
+      out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63),
+               0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+      i++;
+    }else{
+      out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+  }
+  return out;
+}
+
+/** Sidik SHA-256 dari teks, dikembalikan sebagai heksadesimal huruf kecil. */
+function sha256Hex(teks){
+  var pesan = __utf8Bytes(String(teks == null ? '' : teks));
+  var panjangBit = pesan.length * 8;
+
+  pesan.push(0x80);
+  while(pesan.length % 64 !== 56) pesan.push(0);
+  /* panjang 64-bit; 32 bit atas cukup diisi nol untuk ukuran yang wajar */
+  pesan.push(0, 0, 0, 0,
+             (panjangBit >>> 24) & 255, (panjangBit >>> 16) & 255,
+             (panjangBit >>> 8) & 255, panjangBit & 255);
+
+  var h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
+           0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  var w = new Array(64), i, j, a, b, c, d, e, f, g, hh, t1, t2;
+
+  function rotr(x, n){ return (x >>> n) | (x << (32 - n)); }
+
+  for(i = 0; i < pesan.length; i += 64){
+    for(j = 0; j < 16; j++){
+      w[j] = (pesan[i+j*4] << 24) | (pesan[i+j*4+1] << 16) |
+             (pesan[i+j*4+2] << 8) | pesan[i+j*4+3];
+    }
+    for(j = 16; j < 64; j++){
+      var s0 = rotr(w[j-15],7) ^ rotr(w[j-15],18) ^ (w[j-15] >>> 3);
+      var s1 = rotr(w[j-2],17) ^ rotr(w[j-2],19) ^ (w[j-2] >>> 10);
+      w[j] = (w[j-16] + s0 + w[j-7] + s1) | 0;
+    }
+    a=h[0]; b=h[1]; c=h[2]; d=h[3]; e=h[4]; f=h[5]; g=h[6]; hh=h[7];
+    for(j = 0; j < 64; j++){
+      var S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      var ch = (e & f) ^ (~e & g);
+      t1 = (hh + S1 + ch + __K256[j] + w[j]) | 0;
+      var S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      var maj = (a & b) ^ (a & c) ^ (b & c);
+      t2 = (S0 + maj) | 0;
+      hh=g; g=f; f=e; e=(d + t1)|0; d=c; c=b; b=a; a=(t1 + t2)|0;
+    }
+    h[0]=(h[0]+a)|0; h[1]=(h[1]+b)|0; h[2]=(h[2]+c)|0; h[3]=(h[3]+d)|0;
+    h[4]=(h[4]+e)|0; h[5]=(h[5]+f)|0; h[6]=(h[6]+g)|0; h[7]=(h[7]+hh)|0;
+  }
+
+  var hex = '';
+  for(i = 0; i < 8; i++){
+    hex += ('00000000' + (h[i] >>> 0).toString(16)).slice(-8);
+  }
+  return hex;
+}
+
+/* ============================================================
+ * KODE QR BERUBAH
+ *
+ * Token statis punya satu kelemahan mendasar: sekali difoto, ia berlaku
+ * selamanya. Maka kartu tidak lagi memuat token itu apa adanya, melainkan
+ * kode yang dihitung ulang tiap 30 detik dari rahasia milik warga:
+ *
+ *     WN1|<wargaId>|<slot>|<kode>
+ *
+ * Rahasianya hanya diberikan kepada pemilik kartu setelah PIN-nya
+ * terverifikasi, dan tidak pernah ikut dalam data yang dibagikan.
+ * ============================================================ */
+var QR_DETIK_SLOT = 30;
+
+function slotQrSekarang(){
+  return Math.floor(Date.now() / 1000 / QR_DETIK_SLOT);
+}
+
+/** Kode enam karakter untuk satu slot waktu. */
+function kodeQrSlot(rahasia, slot){
+  return sha256Hex(String(rahasia) + '|' + slot).slice(0, 6).toUpperCase();
+}
+
+/** Isi kode QR kartu. Kembali ke token lama bila rahasia belum tersedia. */
+function muatanQrKartu(w){
+  if(!w) return '';
+  if(w.qrRahasia){
+    var slot = slotQrSekarang();
+    return 'WN1|' + w.id + '|' + slot + '|' + kodeQrSlot(w.qrRahasia, slot);
+  }
+  return w.qrCodeToken || w.id || '';
+}
+
+/* ============================================================
  * WargaNet RT/RW — Frontend (vanilla JS, dua mode)
  *   Mode GAS : google.script.run
  *   Mode PWA : fetch() ke URL /exec (Content-Type text/plain → tanpa preflight CORS)
@@ -1336,8 +1463,12 @@ function formModal(title, fields, initial, onSubmit, wide){
       h += '<input class="inp" id="f_'+f.k+'" type="'+(f.t||'text')+'" value="'+esc(v)+'" placeholder="'+esc(f.ph||'')+'">';
     }
     /* Diberi id agar keterangan dapat diperbarui secara langsung — dipakai
-       misalnya untuk memperingatkan saat NIK anak-anak diisi. */
-    if(f.help) h += '<div class="sub" id="f_help_'+f.k+'" style="margin-top:3px">'+esc(f.help)+'</div>';
+       misalnya untuk memperingatkan saat NIK anak-anak diisi.
+       Ruas bertipe 'aksi' sudah memasang keterangannya sendiri di atas;
+       menambahkannya lagi di sini akan membuat dua elemen ber-id sama. */
+    if(f.help && f.t !== 'aksi'){
+      h += '<div class="sub" id="f_help_'+f.k+'" style="margin-top:3px">'+esc(f.help)+'</div>';
+    }
     h += '</div>';
   });
   openModal(title, h,
@@ -2277,6 +2408,258 @@ function hapusAnggota(id){
   });
 }
 
+
+/* ============================================================
+ * KODE QR BERUBAH — penyegaran di kartu yang sedang terbuka
+ * ============================================================ */
+var _qrTimer = null;
+
+function mulaiSegarQr(w){
+  hentikanSegarQr();
+  if(!w || !w.qrRahasia) return;
+
+  _qrTimer = setInterval(function(){
+    var kotak = $('qrKotak');
+    if(!kotak){ hentikanSegarQr(); return; }          // kartu sudah ditutup
+    kotak.innerHTML = qrSvg(muatanQrKartu(w), 180);
+
+    var sisa = QR_DETIK_SLOT - (Math.floor(Date.now()/1000) % QR_DETIK_SLOT);
+    var ket = $('qrHitung');
+    if(ket) ket.textContent = 'Kode berubah dalam ' + sisa + ' detik';
+  }, 1000);
+}
+
+function hentikanSegarQr(){
+  if(_qrTimer){ clearInterval(_qrTimer); _qrTimer = null; }
+}
+
+/* ============================================================
+ * PEMINDAI KARTU WARGA
+ *
+ * Dua jalur pembacaan, dicoba berurutan:
+ *   1. BarcodeDetector bawaan peramban — paling ringan, tersedia di
+ *      Chrome Android dan sebagian peramban desktop;
+ *   2. pustaka jsQR yang ikut dalam bundel — dipakai bila yang pertama
+ *      tidak ada, misalnya di Safari iOS.
+ *
+ * Bila kamera sama sekali tidak dapat dibuka, tersedia isian manual
+ * supaya petugas tetap bisa memeriksa dengan mengetik kodenya.
+ * ============================================================ */
+var PINDAI = {aliran:null, jalan:false, detektor:null, terakhir:'', jedaSampai:0};
+var _jsqrP = null;
+
+function ensureJsQr(){
+  if(typeof jsQR !== 'undefined') return Promise.resolve(jsQR);
+  if(_jsqrP) return _jsqrP;
+
+  _jsqrP = new Promise(function(resolve, reject){
+    var el = document.getElementById('jsqrSrc');
+    var src = el ? String(el.textContent || '') : '';
+    if(src.length > 10000){
+      try{
+        var mod = {exports:{}};
+        new Function('module','exports', src)(mod, mod.exports);
+        window.jsQR = mod.exports.default || mod.exports;
+        return resolve(window.jsQR);
+      }catch(e){
+        _jsqrP = null;
+        return reject(new Error('Pembaca QR tertanam gagal dijalankan: ' + e.message));
+      }
+    }
+    /* Bundel GitHub Pages menyimpannya sebagai berkas terpisah. */
+    var sc = document.createElement('script');
+    sc.src = 'lib/jsqr.min.js';
+    sc.onload = function(){
+      (typeof jsQR !== 'undefined')
+        ? resolve(jsQR)
+        : reject(new Error('Pembaca QR tidak dapat dimuat.'));
+    };
+    sc.onerror = function(){
+      _jsqrP = null;
+      reject(new Error('Pembaca QR tidak tersedia pada paket ini.'));
+    };
+    document.head.appendChild(sc);
+  });
+  return _jsqrP;
+}
+
+function bukaPemindai(){
+  if(!isPengurus()){ toast('Pemeriksaan kartu hanya untuk pengurus dan petugas.','err'); return; }
+
+  openModal('Periksa Kartu Warga',
+    '<div class="sub">Arahkan kamera ke kode QR pada kartu warga. Hasilnya muncul di bawah '+
+      'lengkap dengan foto, supaya Anda dapat mencocokkan wajahnya.</div>'+
+    '<div id="pindaiKotak" style="position:relative;background:#000;border:2px solid #000;'+
+      'aspect-ratio:4/3;overflow:hidden">'+
+      '<video id="pindaiVideo" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>'+
+      '<div style="position:absolute;inset:18%;border:3px solid var(--acc);'+
+        'box-shadow:0 0 0 9999px rgba(0,0,0,.35);pointer-events:none"></div>'+
+    '</div>'+
+    '<div class="sub" id="pindaiStatus" style="margin-top:6px">Menyiapkan kamera…</div>'+
+    '<div id="pindaiHasil"></div>'+
+    '<details style="margin-top:10px"><summary class="sub">Kamera tidak bisa dipakai? Ketik kodenya</summary>'+
+      '<input class="inp" id="pindaiManual" placeholder="tempel atau ketik isi kode QR" style="margin-top:6px">'+
+      '<button class="btn sm dark" style="margin-top:6px" onclick="periksaIsiQr(document.getElementById(\'pindaiManual\').value, true)">Periksa</button>'+
+    '</details>',
+    '<button class="btn" onclick="tutupPemindai()">Tutup</button>', true);
+
+  setTimeout(mulaiKamera, 120);
+}
+
+function statusPindai(teks){
+  var el = $('pindaiStatus');
+  if(el) el.textContent = teks;
+}
+
+function mulaiKamera(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    statusPindai('Peramban ini tidak mendukung kamera. Gunakan isian manual di bawah.');
+    return;
+  }
+
+  navigator.mediaDevices.getUserMedia({
+    video: {facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:960}},
+    audio: false
+  }).then(function(aliran){
+    PINDAI.aliran = aliran;
+    var v = $('pindaiVideo');
+    if(!v){ hentikanKamera(); return; }
+    v.srcObject = aliran;
+    v.play().catch(function(){});
+    PINDAI.jalan = true;
+
+    if(typeof BarcodeDetector !== 'undefined'){
+      try{ PINDAI.detektor = new BarcodeDetector({formats:['qr_code']}); }catch(e){ PINDAI.detektor = null; }
+    }
+    statusPindai(PINDAI.detektor
+      ? 'Kamera siap. Arahkan ke kode QR.'
+      : 'Kamera siap. Menyiapkan pembaca QR…');
+
+    if(PINDAI.detektor) return putaranPindai();
+
+    ensureJsQr()
+      .then(function(){ statusPindai('Kamera siap. Arahkan ke kode QR.'); putaranPindai(); })
+      .catch(function(err){ statusPindai(err.message + ' Gunakan isian manual di bawah.'); });
+  }).catch(function(err){
+    var pesan = (err && err.name === 'NotAllowedError')
+      ? 'Izin kamera ditolak. Aktifkan izin kamera untuk situs ini, atau gunakan isian manual.'
+      : 'Kamera tidak dapat dibuka: ' + (err && err.message ? err.message : 'tidak diketahui') +
+        '. Gunakan isian manual di bawah.';
+    statusPindai(pesan);
+  });
+}
+
+function putaranPindai(){
+  if(!PINDAI.jalan) return;
+  var v = $('pindaiVideo');
+  if(!v || v.readyState < 2){ return setTimeout(putaranPindai, 200); }
+
+  var lanjut = function(){ if(PINDAI.jalan) setTimeout(putaranPindai, 220); };
+
+  if(PINDAI.detektor){
+    PINDAI.detektor.detect(v).then(function(kode){
+      if(kode && kode.length) tanganiHasilPindai(kode[0].rawValue);
+      lanjut();
+    }).catch(lanjut);
+    return;
+  }
+
+  try{
+    var c = document.createElement('canvas');
+    var lebar = Math.min(v.videoWidth || 640, 640);
+    var tinggi = Math.round((v.videoHeight || 480) * lebar / (v.videoWidth || 640));
+    c.width = lebar; c.height = tinggi;
+    var cx = c.getContext('2d', {willReadFrequently:true});
+    cx.drawImage(v, 0, 0, lebar, tinggi);
+    var d = cx.getImageData(0, 0, lebar, tinggi);
+    var hasil = jsQR(d.data, d.width, d.height, {inversionAttempts:'dontInvert'});
+    if(hasil && hasil.data) tanganiHasilPindai(hasil.data);
+  }catch(e){}
+  lanjut();
+}
+
+/** Cegah satu kartu diperiksa berulang-ulang saat kamera masih menyorotnya. */
+function tanganiHasilPindai(isi){
+  var kini = Date.now();
+  if(isi === PINDAI.terakhir && kini < PINDAI.jedaSampai) return;
+  PINDAI.terakhir = isi;
+  PINDAI.jedaSampai = kini + 2500;
+  periksaIsiQr(isi, false);
+}
+
+function periksaIsiQr(isi, manual){
+  isi = String(isi || '').trim();
+  if(!isi){ toast('Belum ada kode yang dibaca.','err'); return; }
+
+  if(!S.online){
+    tampilkanHasilPindai({
+      sah:false, taraf:'luring',
+      pesan:'Pemeriksaan kartu memerlukan koneksi, karena kode dicocokkan di server.'
+    });
+    return;
+  }
+
+  statusPindai('Memeriksa…');
+  callServer('kartu_verifikasi', {isi:isi, aktorNama:(S.me?S.me.nama:'Petugas')})
+    .then(function(r){
+      tampilkanHasilPindai(r);
+      statusPindai(manual ? 'Selesai diperiksa.' : 'Kamera siap. Arahkan ke kode QR berikutnya.');
+    })
+    .catch(function(err){
+      tampilkanHasilPindai({sah:false, taraf:'galat', pesan:err.message});
+      statusPindai('Kamera siap.');
+    });
+}
+
+function tampilkanHasilPindai(r){
+  var el = $('pindaiHasil');
+  if(!el) return;
+
+  var w = r.warga;
+  var latar = r.sah ? (r.taraf === 'sah-statis' ? '#fef9c3' : '#dcfce7') : '#fee2e2';
+  var tepi = r.sah ? (r.taraf === 'sah-statis' ? 'var(--acc)' : 'var(--green)') : 'var(--red)';
+  var judul = r.sah ? (r.taraf === 'sah-statis' ? '⚠️ SAH — TOKEN LAMA' : '✅ KARTU SAH')
+                    : '⛔ DITOLAK';
+
+  var h = '<div class="card flat" style="margin-top:10px;background:'+latar+';border-color:'+tepi+'">'+
+    '<b style="font-size:14px">'+judul+'</b>'+
+    '<div class="sub" style="margin-top:4px">'+esc(r.pesan||'')+'</div>';
+
+  if(w){
+    h += '<div class="row" style="margin-top:10px;align-items:flex-start">'+
+      avatarHtml(w.nama, w.fotoUrl, 'xl')+
+      '<div style="flex:1;min-width:0">'+
+        '<b style="font-size:14px">'+esc(w.nama)+'</b>'+
+        '<div class="sub">'+esc(w.blok||'')+' '+esc(w.noRumah||'')+' • '+esc(w.statusHunian||'')+'</div>'+
+        '<div class="sub">'+esc(w.statusWarga||'')+' • '+num(w.jumlahJiwa)+' jiwa</div>'+
+        (w.statusAkun && w.statusAkun !== 'Active'
+          ? '<div><span class="badge b-red" style="margin-top:4px">Akun '+esc(w.statusAkun)+'</span></div>' : '')+
+        (w.tunggakan
+          ? '<div><span class="badge b-yellow" style="margin-top:4px">'+num(w.tunggakan)+' tagihan belum lunas</span></div>' : '')+
+      '</div>'+
+    '</div>'+
+    '<div class="mapnote" style="margin-top:8px">Cocokkan wajah warga dengan foto di atas '+
+      'sebelum mengizinkan masuk. Kode QR membuktikan kartunya asli, bukan siapa yang membawanya.</div>';
+  }
+
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function hentikanKamera(){
+  PINDAI.jalan = false;
+  if(PINDAI.aliran){
+    try{ PINDAI.aliran.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+  }
+  PINDAI.aliran = null;
+  PINDAI.detektor = null;
+}
+
+function tutupPemindai(){
+  hentikanKamera();
+  closeModal();
+}
+
 /**
  * Pintu masuk kartu digital.
  *
@@ -2316,8 +2699,11 @@ function segarkanKartu(kartu){
   var out = {};
   for(var k in w) if(w.hasOwnProperty(k)) out[k] = w[k];
 
-  /* bagian rahasia: hanya ada pada kartu yang sudah lolos PIN */
+  /* Bagian rahasia: hanya ada pada kartu yang sudah lolos PIN.
+     qrRahasia WAJIB ikut dipertahankan — tanpa itu kartu diam-diam
+     kembali memakai token statis yang tidak pernah kedaluwarsa. */
   out.qrCodeToken = kartu.qrCodeToken;
+  out.qrRahasia   = kartu.qrRahasia;
   out.pinBawaan   = kartu.pinBawaan;
   out.dibukaOleh  = kartu.dibukaOleh;
   if(kartu.nik && String(kartu.nik).indexOf('•') < 0) out.nik = kartu.nik;
@@ -2479,7 +2865,9 @@ function kirimPinPengurus(){
 
 /** Tampilkan kartu dari data yang sudah terverifikasi. */
 function tampilkanKartu(w){
-  var qrGambar = qrSvg(w.qrCodeToken || w.id, 180);
+  hentikanSegarQr();
+  setTimeout(function(){ mulaiSegarQr(w); }, 120);
+  var qrGambar = qrSvg(muatanQrKartu(w), 180);
   openModal('Kartu Digital Warga',
     '<div class="card flat" style="background:#111;color:#fff;text-align:center;border-color:#000">'+
       '<div style="font-size:10px;letter-spacing:1.4px;font-weight:900">'+esc(S.settings.appTitle)+'</div>'+
@@ -2500,7 +2888,10 @@ function tampilkanKartu(w){
     '</div>'+
     '<div style="text-align:center">'+
       (qrGambar
-        ? '<div style="display:inline-block;border:2px solid #000;background:#fff;line-height:0">'+qrGambar+'</div>'
+        ? '<div id="qrKotak" style="display:inline-block;border:2px solid #000;background:#fff;line-height:0">'+qrGambar+'</div>'+
+          (w.qrRahasia
+            ? '<div class="sub" id="qrHitung" style="margin-top:5px">Kode berubah tiap 30 detik</div>'
+            : '<div class="sub" style="margin-top:5px;color:var(--red)">Kartu ini memakai token lama yang tidak pernah kedaluwarsa.</div>')
         : '<div class="qrbox">Kode QR tidak dapat dibentuk.<br><br>Token:<br>'+esc(w.qrCodeToken)+'</div>')+
       '<div class="sub" style="margin-top:6px">Token akses: <b>'+esc(w.qrCodeToken)+'</b></div>'+
     '</div>'+
@@ -3255,6 +3646,10 @@ function viewPatrol(){
         ? '<button class="btn red" onclick="hentikanBerbagiLokasi()">⏹ Hentikan Berbagi Lokasi</button>'
         : '<button class="btn dark" onclick="mulaiBerbagiLokasi()">▶ Mulai Berbagi Lokasi Saya</button>')+
       '<button class="btn" onclick="petaKeLokasiSaya()">🎯 Peta ke Posisi Saya</button>'+
+      (isPengurus()
+        ? '<button class="btn dark" onclick="bukaPemindai()" '+
+          'title="Pindai kode QR kartu warga di pos jaga">🔍 Periksa Kartu Warga</button>'
+        : '')+
     '</div>'+
     '<div class="sub" style="margin-top:8px" id="liveInfo">'+
       (sedang ? 'Perangkat: '+esc(deviceId())+' — biarkan layar tetap menyala agar pengiriman tidak terhenti.'
@@ -4980,6 +5375,10 @@ function openSettings(){
       '<div><label class="f">Sub Judul / Nama Kompleks</label><input class="inp" id="setSub" value="'+esc(S.settings.appSubtitle)+'"></div>'+
       '<div><label class="f">Nama RT/RW</label><input class="inp" id="setRT" value="'+esc(S.settings.namaRT||'')+'"></div>'+
       '<div><label class="f">Nominal Iuran Standar (Rp)</label><input class="inp" id="setNom" type="number" value="'+esc(S.settings.iuranNominal)+'"></div>'+
+      '<div><label class="f">Nomor WhatsApp Penyedia Aplikasi</label>'+
+        '<input class="inp" id="setPenyedia" value="'+esc(S.settings.kontakPenyedia||'')+'" placeholder="0812-xxxx-xxxx">'+
+        '<div class="sub">Bila diisi, panel Lisensi menyediakan tombol untuk mengirimkan ID '+
+        'database langsung ke penyedia lewat WhatsApp.</div></div>'+
       '<div><label class="f">PIN Pengurus (4–8 digit)</label><input class="inp" id="setPin" value="'+esc(S.settings.managerPin)+'"></div>'+
       panelLisensi()+
       '<div class="card flat" style="background:#fef9c3"><b style="font-size:12px">🗺️ Peta Dasar</b>'+
@@ -5052,6 +5451,49 @@ function warnaLisensi(l){
   return '#fee2e2';
 }
 
+/**
+ * Kotak identitas database, siap disalin.
+ *
+ * Klien sering kesulitan menemukan ID Spreadsheet karena harus mengorek
+ * bilah alamat peramban. Ditampilkan langsung di sini supaya cukup satu
+ * ketukan untuk menyalin lalu mengirimkannya ke penyedia.
+ */
+function kotakIdDatabase(l, keterangan){
+  var id = String((l && l.dbId) || '');
+  var nama = String((l && l.dbNama) || '');
+
+  return '<div class="card flat" style="margin-top:8px;background:#f8fafc">'+
+    '<b style="font-size:11.5px">🆔 ID DATABASE APLIKASI INI</b>'+
+    (keterangan ? '<div class="sub" style="margin-top:4px">'+esc(keterangan)+'</div>' : '')+
+    (nama ? '<div class="sub" style="margin-top:4px">Berkas: '+esc(nama)+'</div>' : '')+
+    '<div style="margin-top:6px;font-family:ui-monospace,monospace;font-size:11px;'+
+      'word-break:break-all;border:2px solid #000;background:#fff;padding:7px" id="dbIdTeks">'+
+      esc(id || '(tidak terbaca)')+'</div>'+
+    (id
+      ? '<div class="row" style="margin-top:8px;flex-wrap:wrap">'+
+          '<button class="btn sm dark" onclick="salinTeks(\'' + jsq(id) + '\')">📋 Salin ID</button>'+
+          (nomorWa(S.settings.kontakPenyedia)
+            ? '<button class="btn sm green" onclick="kirimIdKePenyedia()">💬 Kirim ke Penyedia</button>'
+            : '')+
+        '</div>'
+      : '<div class="sub" style="margin-top:6px">ID tidak terbaca. Buka aplikasi lewat URL '+
+        'Web App resmi, atau lihat menu <b>WargaNet ▸ Lihat ID Database</b> di Spreadsheet.</div>')+
+  '</div>';
+}
+
+/** Kirim ID database ke nomor penyedia lewat WhatsApp, bila nomornya tersimpan. */
+function kirimIdKePenyedia(){
+  var l = S.lisensi || {};
+  var wa = nomorWa(S.settings.kontakPenyedia);
+  if(!wa){ toast('Nomor penyedia belum diisi di Pengaturan.','err'); return; }
+
+  bukaWa(wa,
+    'Halo, saya dari ' + (S.settings.namaRT || 'RT') + '. ' +
+    'Mohon diterbitkan kunci lisensi WargaNet untuk database berikut.\n\n' +
+    'Nama berkas: ' + (l.dbNama || '-') + '\n' +
+    'ID database: ' + (l.dbId || '-'));
+}
+
 function panelLisensi(){
   var l = S.lisensi || {aktif:true, jenis:'-', pesan:''};
 
@@ -5074,12 +5516,28 @@ function panelLisensi(){
       '<span class="badge '+(l.aktif?'b-green':'b-red')+'">'+(l.aktif?'AKTIF':'TIDAK AKTIF')+'</span></div>'+
     '<div class="sub" style="margin-top:6px">'+esc(l.pesan||'')+'</div>';
 
+  if(l.jenis === 'salah-database'){
+    /* Kunci milik pemasangan lain. Yang paling dibutuhkan pengurus di sini
+       adalah ID database miliknya sendiri, siap disalin. */
+    h += kotakIdDatabase(l,
+      'Kunci ini diterbitkan untuk database lain. Kirimkan ID di bawah kepada penyedia '+
+      'untuk memperoleh kunci yang sesuai.');
+  }
+
   if(l.jenis === 'berlisensi'){
     h += '<div class="sub" style="margin-top:4px">'+esc(l.rt||'')+' • paket '+esc(l.paket||'-')+
-         ' • '+num(l.jumlahKK)+' dari '+num(l.kk)+' KK</div>';
+         ' • '+num(l.jumlahKK)+' dari '+num(l.kk)+' KK</div>'+
+         (l.terikatDb
+           ? '<div class="sub">🔒 Terkunci ke database ini</div>'
+           : '<div class="sub">Tidak terkunci ke database tertentu</div>');
   }else if(l.jenis === 'percobaan' || l.jenis === 'percobaan-habis'){
     h += '<div class="sub" style="margin-top:4px">Masa percobaan dibatasi '+num(l.kk)+' KK; '+
-         'saat ini '+num(l.jumlahKK)+' KK tercatat.</div>';
+         'saat ini '+num(l.jumlahKK)+' KK tercatat.</div>'+
+         kotakIdDatabase(l,
+           'Untuk membeli lisensi, kirimkan ID database di bawah ini kepada penyedia. '+
+           'Kunci Anda akan dikunci ke database ini saja.');
+  }else if(l.jenis === 'kedaluwarsa'){
+    h += kotakIdDatabase(l, 'Sertakan ID ini saat meminta perpanjangan.');
   }
 
   if(!l.aktif){
@@ -5213,7 +5671,8 @@ function simpanSettings(){
   if(isPengurus() && $('setTitle')){
     var v = {
       appTitle: $('setTitle').value, appSubtitle: $('setSub').value,
-      namaRT: $('setRT').value, iuranNominal: $('setNom').value, managerPin: $('setPin').value
+      namaRT: $('setRT').value, iuranNominal: $('setNom').value, managerPin: $('setPin').value,
+      kontakPenyedia: $('setPenyedia') ? $('setPenyedia').value.trim() : ''
     };
     if($('setLat'))  v.petaLat  = $('setLat').value;
     if($('setLng'))  v.petaLng  = $('setLng').value;
