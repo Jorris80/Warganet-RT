@@ -5376,7 +5376,7 @@ function openSettings(){
       '<div><label class="f">Nama RT/RW</label><input class="inp" id="setRT" value="'+esc(S.settings.namaRT||'')+'"></div>'+
       '<div><label class="f">Nominal Iuran Standar (Rp)</label><input class="inp" id="setNom" type="number" value="'+esc(S.settings.iuranNominal)+'"></div>'+
       '<div><label class="f">Nomor WhatsApp Penyedia Aplikasi</label>'+
-        '<input class="inp" id="setPenyedia" value="'+esc(S.settings.kontakPenyedia||'')+'" placeholder="0812-xxxx-xxxx">'+
+        '<input class="inp" id="setKontakPenyedia" value="'+esc(S.settings.kontakPenyedia||'')+'" placeholder="0812-xxxx-xxxx">'+
         '<div class="sub">Bila diisi, panel Lisensi menyediakan tombol untuk mengirimkan ID '+
         'database langsung ke penyedia lewat WhatsApp.</div></div>'+
       '<div><label class="f">PIN Pengurus (4–8 digit)</label><input class="inp" id="setPin" value="'+esc(S.settings.managerPin)+'"></div>'+
@@ -5672,7 +5672,7 @@ function simpanSettings(){
     var v = {
       appTitle: $('setTitle').value, appSubtitle: $('setSub').value,
       namaRT: $('setRT').value, iuranNominal: $('setNom').value, managerPin: $('setPin').value,
-      kontakPenyedia: $('setPenyedia') ? $('setPenyedia').value.trim() : ''
+      kontakPenyedia: $('setKontakPenyedia') ? $('setKontakPenyedia').value.trim() : ''
     };
     if($('setLat'))  v.petaLat  = $('setLat').value;
     if($('setLng'))  v.petaLng  = $('setLng').value;
