@@ -12,7 +12,7 @@
  * mendapat versi terbaru, bukan versi lama dari cache.
  */
 
-var CACHE_VERSION = 'warganet-v4';
+var CACHE_VERSION = 'warganet-v5';
 
 /** Cache terpisah untuk ubin peta & foto agar tidak ikut terhapus saat shell naik versi. */
 var CACHE_FOTO  = 'warganet-foto-v1';

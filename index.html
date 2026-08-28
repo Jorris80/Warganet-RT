@@ -568,7 +568,7 @@ var S = {
   pengumuman:[],diskusi:[],patroli:[],panic:[],logs:[],
   bidang:[], cctv:[], patroliSesi:[], anggota:[],
   lisensi:{aktif:true, jenis:'percobaan', pesan:''},
-  aiEnabled:false, me:null, outbox:[], aiChat:[]
+  aiEnabled:false, me:null, outbox:[], aiChat:[], aplikasi:{}
 };
 
 /* --- keadaan peta & pelacakan langsung (tidak ikut disimpan ke cache) --- */
@@ -614,6 +614,7 @@ function applyBootstrap(d, fromCache){
     if(d[k] !== undefined) S[k] = d[k];
   });
   if(d.aiEnabled !== undefined) S.aiEnabled = d.aiEnabled;
+  if(d.aplikasi) S.aplikasi = d.aplikasi;
   if(!S.me && S.warga.length) { S.me = S.warga[0]; saveMe(); }
   if(!fromCache) saveCache();
 }
@@ -5356,6 +5357,404 @@ function kirimAI(){
   });
 }
 
+/* ============================================================
+ * TENTANG APLIKASI — versi, ketentuan penggunaan, pemberitahuan privasi
+ *
+ * Dokumen di bawah ini disusun agar sesuai dengan cara aplikasi ini
+ * benar-benar bekerja: data disimpan di Spreadsheet milik RT sendiri,
+ * penyedia tidak memegangnya, dan sebagian besar kewajiban justru ada
+ * pada pengurus RT sebagai pihak yang mengumpulkan data warganya.
+ *
+ * Dokumen ini bukan nasihat hukum. Penyedia dan pengurus RT sebaiknya
+ * memeriksakannya kepada yang memahami regulasi sebelum dipakai luas.
+ * ============================================================ */
+
+function infoAplikasi(){
+  var a = (S.aplikasi || {});
+  return {
+    nama:       a.nama || 'WargaNet RT/RW',
+    versi:      a.versi || '(tidak diketahui)',
+    build:      a.build || '-',
+    dokVersi:   a.dokVersi || '1.0',
+    dokTanggal: a.dokTanggal || '-'
+  };
+}
+
+/** Nama pihak yang mengelola pemasangan ini, untuk dipakai di dokumen. */
+function namaPengelola(){
+  var st = S.settings || {};
+  return esc(st.namaRT || st.appTitle || 'Pengurus RT');
+}
+
+function kontakPengelola(){
+  var k = ketuaRT();
+  if(k && k.noHp) return esc(k.nama || 'Ketua RT') + ' — ' + esc(k.noHp);
+  if(k) return esc(k.nama || 'Ketua RT');
+  return 'Pengurus RT setempat';
+}
+
+/* ---------- jendela utama ---------- */
+var _tabTentang = 'versi';
+
+function bukaTentang(bagian){
+  _tabTentang = bagian || 'versi';
+  gambarTentang();
+}
+
+function gambarTentang(){
+  var isi =
+    '<div class="row" style="flex-wrap:wrap;gap:6px">'+
+      chipTentang('versi',   'ℹ️ Versi & Info')+
+      chipTentang('syarat',  '📄 Ketentuan Penggunaan')+
+      chipTentang('privasi', '🔒 Pemberitahuan Privasi')+
+      chipTentang('sumber',  '🧩 Komponen Pihak Ketiga')+
+    '</div>'+
+    '<div id="isiTentang">'+isiTentang(_tabTentang)+'</div>';
+
+  openModal('Tentang Aplikasi', isi,
+    '<button class="btn" onclick="closeModal()">Tutup</button>'+
+    '<button class="btn dark" onclick="cetakTentang()">🖨️ Cetak Dokumen</button>', true);
+}
+
+function chipTentang(k, label){
+  return '<button class="chip'+(_tabTentang===k?' on':'')+'" '+
+    'onclick="_tabTentang=\''+jsq(k)+'\'; gantiIsiTentang();">'+esc(label)+'</button>';
+}
+
+function gantiIsiTentang(){
+  var el = $('isiTentang');
+  if(el) el.innerHTML = isiTentang(_tabTentang);
+  var chips = document.querySelectorAll('.mb .chip');
+  var urut = ['versi','syarat','privasi','sumber'];
+  for(var i=0;i<chips.length && i<urut.length;i++){
+    chips[i].className = 'chip'+(_tabTentang===urut[i]?' on':'');
+  }
+}
+
+function isiTentang(k){
+  if(k === 'syarat')  return dokSyarat();
+  if(k === 'privasi') return dokPrivasi();
+  if(k === 'sumber')  return dokSumber();
+  return dokVersi();
+}
+
+/* ============================================================
+ * 1. VERSI & INFO
+ * ============================================================ */
+function dokVersi(){
+  var a = infoAplikasi();
+  var l = S.lisensi || {};
+
+  var baris = [
+    ['Nama aplikasi', a.nama],
+    ['Versi aplikasi', a.versi],
+    ['Tanggal rakit', a.build],
+    ['Versi dokumen hukum', a.dokVersi + ' (' + a.dokTanggal + ')'],
+    ['Mode berjalan', isGas() ? 'Google Apps Script' : 'PWA statis (GitHub Pages)'],
+    ['Dipasang untuk', S.settings.namaRT || '-'],
+    ['ID database', l.dbId || '-'],
+    ['Status lisensi', (l.jenis || '-') + (l.aktif ? ' (aktif)' : ' (tidak aktif)')]
+  ];
+
+  var h = '<div class="card flat" style="background:#f8fafc">'+
+    '<b style="font-size:12px">KETERANGAN PEMASANGAN</b>'+
+    '<div class="tw" style="margin-top:8px"><table>';
+  baris.forEach(function(b){
+    h += '<tr><td style="width:42%"><b>'+esc(b[0])+'</b></td><td>'+esc(b[1])+'</td></tr>';
+  });
+  h += '</table></div></div>';
+
+  h += '<div class="card flat"><b style="font-size:12px">SAAT MELAPORKAN MASALAH</b>'+
+    '<div class="sub" style="margin-top:5px">Sertakan <b>versi aplikasi</b> dan <b>ID database</b> '+
+    'di atas. Tanpa keduanya, penyedia sulit memastikan masalah yang Anda alami berasal dari '+
+    'versi yang mana.</div>'+
+    '<div class="row" style="margin-top:8px">'+
+      '<button class="btn sm dark" onclick="salinInfoVersi()">📋 Salin Keterangan</button>'+
+    '</div></div>';
+
+  return h;
+}
+
+function salinInfoVersi(){
+  var a = infoAplikasi();
+  var l = S.lisensi || {};
+  salinTeks([
+    a.nama + ' v' + a.versi + ' (rakit ' + a.build + ')',
+    'Mode      : ' + (isGas() ? 'Apps Script' : 'PWA statis'),
+    'RT        : ' + (S.settings.namaRT || '-'),
+    'ID database: ' + (l.dbId || '-'),
+    'Lisensi   : ' + (l.jenis || '-')
+  ].join('\n'));
+}
+
+/* ============================================================
+ * 2. KETENTUAN PENGGUNAAN
+ * ============================================================ */
+function dokSyarat(){
+  var a = infoAplikasi();
+  var p = [];
+
+  p.push(kepalaDok('Ketentuan Penggunaan', a));
+
+  p.push(pasal('1. Siapa saja yang terlibat', [
+    '<b>Penyedia</b> — pihak yang membangun dan melisensikan aplikasi ini kepada RT Anda.',
+    '<b>Pengelola</b> — pengurus RT/RW yang memasang aplikasi ini dan mengumpulkan data warga. '+
+      'Pada pemasangan ini: <b>'+namaPengelola()+'</b>.',
+    '<b>Pengguna</b> — pengurus dan warga yang memakai aplikasi.'
+  ]));
+
+  p.push(pasal('2. Sifat aplikasi', [
+    'Aplikasi ini berjalan di atas Google Apps Script dan Google Sheets milik akun Pengelola. '+
+      'Seluruh data tersimpan di Spreadsheet milik Pengelola sendiri.',
+    '<b>Penyedia tidak menyimpan, tidak membaca, dan tidak memegang salinan data warga.</b> '+
+      'Penyedia hanya menerbitkan kunci lisensi.',
+    'Karena itu, tanggung jawab atas isi dan keamanan data berada pada Pengelola.'
+  ]));
+
+  p.push(pasal('3. Lisensi', [
+    'Lisensi diberikan kepada satu RT dan diikat pada satu database (Spreadsheet) tertentu. '+
+      'Kunci lisensi tidak berlaku bila dipindahkan ke database lain.',
+    'Lisensi berlaku untuk masa yang tercantum pada kunci, dengan batas jumlah kepala keluarga '+
+      'yang juga tercantum di sana.',
+    'Menggandakan, menjual kembali, atau menyewakan aplikasi ini kepada pihak lain tanpa izin '+
+      'tertulis Penyedia tidak diperkenankan.',
+    '<b>Berakhirnya lisensi tidak menyandera data Anda.</b> Seluruh data tetap dapat dibuka, '+
+      'dibaca, dicetak, dan diunduh. Yang berhenti hanya pencatatan data baru sampai lisensi '+
+      'diperpanjang. Tombol darurat dan kartu warga tetap berfungsi karena menyangkut keselamatan.'
+  ]));
+
+  p.push(pasal('4. Kewajiban Pengelola', [
+    'Memberi tahu warga bahwa datanya dikumpulkan, untuk apa, dan siapa yang dapat melihatnya.',
+    'Mengganti PIN pengurus bawaan dan menjaganya, termasuk saat terjadi pergantian pengurus.',
+    'Membatasi akses Spreadsheet hanya kepada pengurus yang memang memerlukannya.',
+    'Mengumpulkan data seperlunya saja, dan menghapus yang sudah tidak relevan.',
+    'Memakai aplikasi ini hanya untuk keperluan administrasi lingkungan, bukan untuk mengawasi '+
+      'orang perseorangan, menekan warga, atau kepentingan politik praktis.'
+  ]));
+
+  p.push(pasal('5. Layanan pihak ketiga', [
+    'Google Workspace (Sheets, Drive, Apps Script) tunduk pada ketentuan Google dan akun milik '+
+      'Pengelola sendiri.',
+    'Penyedia peta berbayar (MapTiler, Esri, Mapbox, atau sumber lain) memakai kunci milik '+
+      'Pengelola; <b>tagihannya langsung kepada Pengelola</b>, bukan kepada Penyedia.',
+    'Asisten AI memakai Google Gemini dengan kunci milik Pengelola. Jangan memasukkan data '+
+      'pribadi warga ke dalam pertanyaan AI.',
+    'Tautan CCTV dan tautan WhatsApp mengarah ke layanan pihak ketiga yang tunduk pada '+
+      'ketentuan masing-masing.'
+  ]));
+
+  p.push(pasal('6. Batasan jaminan', [
+    'Aplikasi diberikan apa adanya. Penyedia berusaha memperbaiki kekeliruan yang dilaporkan, '+
+      'tetapi tidak menjamin aplikasi bebas dari kesalahan atau tersedia tanpa henti.',
+    'Ketersediaan bergantung pada layanan Google dan koneksi internet Anda — keduanya di luar '+
+      'kendali Penyedia.',
+    'Beberapa fungsi memerlukan koneksi: pemeriksaan kartu QR, unggah foto, asisten AI, siaran '+
+      'CCTV, dan peta berbayar. Aplikasi menyatakannya terus terang saat sedang luring, dan tidak '+
+      'diam-diam meloloskan pemeriksaan yang gagal.',
+    '<b>Cadangkan data Anda secara berkala.</b> Spreadsheet milik Anda dapat disalin sendiri '+
+      'kapan saja lewat menu File di Google Sheets.'
+  ]));
+
+  p.push(pasal('7. Perubahan ketentuan', [
+    'Ketentuan ini dapat diperbarui mengikuti perkembangan aplikasi atau peraturan. Versi dan '+
+      'tanggalnya tercantum di bagian atas dokumen ini.',
+    'Perubahan yang berarti akan disampaikan Penyedia kepada Pengelola melalui kontak yang '+
+      'terdaftar.'
+  ]));
+
+  p.push(catatanHukum());
+  return p.join('');
+}
+
+/* ============================================================
+ * 3. PEMBERITAHUAN PRIVASI
+ * ============================================================ */
+function dokPrivasi(){
+  var a = infoAplikasi();
+  var p = [];
+
+  p.push(kepalaDok('Pemberitahuan Privasi', a));
+
+  p.push('<div class="mapnote">Dokumen ini menjelaskan data apa yang disimpan aplikasi, untuk '+
+    'apa, siapa yang dapat melihatnya, dan hak Anda sebagai warga. Disusun mengacu pada '+
+    'Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi, yang berlaku penuh '+
+    'sejak 17 Oktober 2024.</div>');
+
+  p.push(pasal('1. Siapa yang bertanggung jawab atas data Anda', [
+    'Pihak yang mengumpulkan dan menentukan penggunaan data warga adalah <b>'+namaPengelola()+
+      '</b> — yaitu pengurus RT setempat, bukan pembuat aplikasi.',
+    'Data tersimpan di Google Spreadsheet milik akun pengurus RT. Pembuat aplikasi tidak '+
+      'memegang salinannya dan tidak dapat membacanya.',
+    'Kontak yang dapat dihubungi: '+kontakPengelola()+'.'
+  ]));
+
+  p.push(pasal('2. Data apa saja yang disimpan', [
+    '<b>Identitas kepala keluarga dan anggota keluarga</b> — nama, alamat di lingkungan RT, '+
+      'nomor telepon, email, jenis kelamin, tempat dan tanggal lahir, agama, status perkawinan, '+
+      'pendidikan, pekerjaan, golongan darah, foto, dan keterangan lain yang diisi pengurus.',
+    '<b>NIK bersifat opsional</b> dan boleh dikosongkan. Bila diisi, pada daftar umum hanya '+
+      'ditampilkan tersamar (empat angka pertama dan empat angka terakhir).',
+    '<b>Catatan administrasi</b> — iuran, kas, aset yang dipinjam, pengaduan, voting, '+
+      'pengumuman, dan forum warga.',
+    '<b>Catatan keamanan</b> — pos jaga, jejak lokasi petugas patroli selama sesi berbagi lokasi '+
+      'aktif, panggilan darurat, dan pemeriksaan kartu warga.',
+    '<b>Bidang persil</b> — batas dan nomor rumah pada peta lingkungan, bila pengurus memetakannya.'
+  ]));
+
+  p.push(pasal('3. Untuk apa data dipakai', [
+    'Menyelenggarakan administrasi lingkungan: pendataan warga, penagihan dan pencatatan iuran, '+
+      'pembukuan kas, pengelolaan aset, dan penanganan pengaduan.',
+    'Menyelenggarakan keamanan lingkungan: patroli, panggilan darurat, dan verifikasi bahwa '+
+      'seseorang benar warga setempat.',
+    'Menyampaikan pengumuman dan menyelenggarakan musyawarah warga.',
+    '<b>Data tidak dipakai untuk iklan, tidak diperjualbelikan, dan tidak diserahkan kepada '+
+      'pihak lain</b> selain yang disebut pada bagian 5.'
+  ]));
+
+  p.push(pasal('4. Siapa yang dapat melihat apa', [
+    '<b>Warga</b> dapat melihat daftar warga, pengumuman, forum, dan hasil voting. NIK yang '+
+      'tampil selalu dalam bentuk tersamar.',
+    '<b>Pengurus</b> dapat melihat dan mengubah seluruh data, serta membuka kartu warga dengan '+
+      'PIN pengurus. Setiap pembukaan kartu tercatat.',
+    '<b>Kartu digital</b> hanya dapat dibuka pemiliknya dengan PIN masing-masing. Kode QR '+
+      'berubah setiap 30 detik sehingga tangkapan layar lama tidak dapat dipakai ulang.',
+    '<b>Rekap tingkat RW</b>, bila diaktifkan pengurus RT, hanya menerima <b>angka</b>: jumlah '+
+      'jiwa, saldo kas, jumlah tunggakan, dan sejenisnya. Nama, NIK, alamat, nomor telepon, dan '+
+      'foto tidak pernah ikut. Pengurus RT dapat mencabut izin ini kapan saja.',
+    'Seluruh tindakan penting tercatat pada Log Transparansi yang dapat dibaca semua warga.'
+  ]));
+
+  p.push(pasal('5. Layanan pihak ketiga yang terlibat', [
+    '<b>Google</b> — data tersimpan di Google Sheets dan foto di Google Drive milik akun pengurus.',
+    '<b>Penyedia peta</b> (bila dipakai) menerima permintaan gambar peta berisi koordinat area '+
+      'yang sedang dilihat, bukan data warga. Peta bawaan aplikasi digambar sendiri tanpa '+
+      'layanan luar.',
+    '<b>Google Gemini</b> (bila asisten AI diaktifkan) menerima pertanyaan yang diketik pengguna. '+
+      'Jangan mengetikkan data pribadi warga ke sana.',
+    '<b>Catatan tentang foto:</b> foto profil disimpan di Google Drive dan dibagikan lewat '+
+      'tautan, sehingga siapa pun yang mengetahui alamat berkasnya dapat membukanya tanpa masuk '+
+      'akun. Tautannya panjang dan sulit ditebak, tetapi itu bukan pengamanan penuh.'
+  ]));
+
+  p.push(pasal('6. Berapa lama data disimpan', [
+    'Data warga disimpan selama yang bersangkutan masih terdaftar di lingkungan RT.',
+    'Jejak lokasi patroli dipangkas otomatis pada 5.000 titik terakhir.',
+    'Pengurus dianjurkan menghapus data warga yang sudah pindah, foto lama, dan catatan yang '+
+      'tidak lagi diperlukan secara berkala.'
+  ]));
+
+  p.push(pasal('7. Hak Anda sebagai warga', [
+    'Mengetahui data apa yang disimpan tentang Anda dan keluarga Anda.',
+    'Meminta koreksi bila ada data yang keliru.',
+    'Meminta penghapusan data yang tidak lagi diperlukan.',
+    'Meminta salinan data Anda.',
+    'Menolak atau menarik persetujuan atas pemrosesan tertentu, sejauh tidak bertentangan dengan '+
+      'kewajiban lain.',
+    'Mengajukan keberatan kepada pengurus RT. Sampaikan permintaan Anda kepada '+kontakPengelola()+'.'
+  ]));
+
+  p.push(pasal('8. Data anak', [
+    'Aplikasi memperingatkan pengurus saat NIK diisi untuk anggota keluarga berstatus anak atau '+
+      'yang berusia di bawah 17 tahun, karena administrasi RT umumnya tidak memerlukannya.',
+    'Pengisian data anak sebaiknya dilakukan dengan sepengetahuan orang tua atau walinya.'
+  ]));
+
+  p.push(pasal('9. Bila terjadi kebocoran data', [
+    'Pengurus RT wajib memberitahukan warga yang terdampak dan pihak berwenang paling lambat '+
+      '<b>3x24 jam</b> sejak diketahui, sesuai ketentuan yang berlaku.',
+    'Pemberitahuan memuat data apa yang terdampak, kapan terjadi, dan langkah penanganannya.'
+  ]));
+
+  p.push(pasal('10. Keamanan yang diterapkan aplikasi', [
+    'PIN pengurus untuk membuka akses pengelolaan, dan PIN tersendiri untuk tiap kartu warga.',
+    'PIN disimpan sebagai sidik kriptografis, bukan sebagai teks — pengurus sekalipun tidak dapat '+
+      'membacanya, hanya dapat mereset.',
+    'NIK disamarkan pada daftar umum; NIK utuh hanya keluar setelah PIN terverifikasi.',
+    'Percobaan PIN dibatasi: lima kali salah mengunci kartu selama sepuluh menit.',
+    'Jejak audit atas tindakan penting.',
+    '<b>Batas yang perlu disadari:</b> aplikasi diterbitkan dengan akses terbuka agar warga dapat '+
+      'membukanya tanpa akun Google. Ini bukan pengamanan setingkat perbankan. Jangan menyimpan '+
+      'data yang benar-benar rahasia di dalamnya.'
+  ]));
+
+  p.push(catatanHukum());
+  return p.join('');
+}
+
+/* ============================================================
+ * 4. KOMPONEN PIHAK KETIGA
+ * ============================================================ */
+function dokSumber(){
+  var a = infoAplikasi();
+  var h = kepalaDok('Komponen Pihak Ketiga', a);
+
+  h += '<div class="sub" style="margin-bottom:8px">Aplikasi ini menyertakan perangkat lunak '+
+    'sumber terbuka berikut. Teks lisensi lengkapnya ada pada berkas '+
+    '<b>lib/LISENSI-PIHAK-KETIGA.txt</b> di dalam paket.</div>';
+
+  var daftar = [
+    ['Leaflet 1.9.4', 'BSD 2-Clause', 'Vladimir Agafonkin', 'Peta lingkungan RT'],
+    ['qrcode-generator 2.0.4', 'MIT', 'Kazuhiko Arase', 'Membentuk kode QR kartu warga'],
+    ['hls.js 1.5.13 (light)', 'Apache-2.0', 'Dailymotion', 'Memutar siaran CCTV beraliran HLS'],
+    ['jsQR', 'Apache-2.0', 'Cosmo Wolfe', 'Memindai kode QR bila peramban tidak menyediakannya']
+  ];
+
+  h += '<div class="tw"><table><thead><tr><th>Komponen</th><th>Lisensi</th><th>Dipakai untuk</th>'+
+       '</tr></thead><tbody>';
+  daftar.forEach(function(d){
+    h += '<tr><td><b>'+esc(d[0])+'</b><div class="sub">'+esc(d[2])+'</div></td>'+
+         '<td><span class="badge b-gray">'+esc(d[1])+'</span></td>'+
+         '<td class="sub">'+esc(d[3])+'</td></tr>';
+  });
+  h += '</tbody></table></div>';
+
+  h += '<div class="card flat" style="margin-top:10px"><b style="font-size:12px">CATATAN MEREK</b>'+
+    '<div class="sub" style="margin-top:4px">"QR Code" adalah merek terdaftar DENSO WAVE '+
+    'INCORPORATED. Pemakaian teknologinya sendiri bebas royalti.</div></div>';
+
+  return h;
+}
+
+/* ---------- potongan bersama ---------- */
+function kepalaDok(judul, a){
+  return '<div class="card flat" style="background:#111;color:#fff">'+
+    '<b style="font-size:14px">'+esc(judul)+'</b>'+
+    '<div class="sub" style="color:#cbd5e1;margin-top:3px">'+
+      esc(a.nama)+' v'+esc(a.versi)+' • dokumen versi '+esc(a.dokVersi)+
+      ' • berlaku sejak '+esc(a.dokTanggal)+
+    '</div></div>';
+}
+
+function pasal(judul, butir){
+  var h = '<div class="card flat"><b style="font-size:12.5px">'+esc(judul)+'</b>'+
+          '<ul style="margin:7px 0 0 17px;font-size:12.5px;line-height:1.75">';
+  butir.forEach(function(b){ h += '<li>'+b+'</li>'; });
+  return h + '</ul></div>';
+}
+
+function catatanHukum(){
+  return '<div class="mapnote warn">Dokumen ini disusun sebagai acuan yang wajar untuk aplikasi '+
+    'administrasi lingkungan, bukan nasihat hukum. Pengurus RT dan penyedia aplikasi sebaiknya '+
+    'memeriksakannya kepada pihak yang memahami peraturan pelindungan data sebelum dipakai '+
+    'secara luas, dan menyesuaikannya dengan keadaan masing-masing.</div>';
+}
+
+/* ---------- cetak ---------- */
+function cetakTentang(){
+  var a = infoAplikasi();
+  var isi = '<h1 style="font-size:18px;margin-bottom:4px">'+esc(a.nama)+'</h1>'+
+    '<div style="font-size:11px;color:#555;margin-bottom:14px">Versi '+esc(a.versi)+
+      ' • dokumen '+esc(a.dokVersi)+' • '+esc(a.dokTanggal)+
+      ' • dicetak '+esc(new Date().toLocaleString('id-ID'))+'</div>'+
+    dokSyarat() + '<div style="page-break-before:always"></div>' + dokPrivasi() +
+    '<div style="page-break-before:always"></div>' + dokSumber();
+
+  var area = $('printArea');
+  if(!area){ toast('Area cetak tidak tersedia.','err'); return; }
+  area.innerHTML = isi;
+  window.print();
+}
+
 function openSettings(){
   var url = apiUrl();
   openModal('⚙️ Pengaturan Aplikasi',
@@ -5364,7 +5763,16 @@ function openSettings(){
         'Mode: <b>'+(isGas()?'Google Apps Script':'PWA statis')+'</b><br>'+
         'Koneksi: <b>'+(S.online?'Online':'Offline')+'</b><br>'+
         'Antrian offline: <b>'+S.outbox.length+' perubahan</b><br>'+
-        'Asisten AI: <b>'+(S.aiEnabled?'Aktif':'Nonaktif')+'</b>'+
+        'Asisten AI: <b>'+(S.aiEnabled?'Aktif':'Nonaktif')+'</b><br>'+
+        'Versi aplikasi: <b>'+esc(infoAplikasi().versi)+'</b>'+
+      '</div></div>'+
+    '<div class="card flat"><b style="font-size:12px">Tentang &amp; Ketentuan</b>'+
+      '<div class="sub" style="margin-top:4px">Versi aplikasi, ketentuan penggunaan, '+
+      'pemberitahuan privasi warga, dan daftar komponen pihak ketiga.</div>'+
+      '<div class="row" style="margin-top:8px;flex-wrap:wrap">'+
+        '<button class="btn sm" onclick="bukaTentang(\'versi\')">ℹ️ Versi &amp; Info</button>'+
+        '<button class="btn sm" onclick="bukaTentang(\'syarat\')">📄 Ketentuan</button>'+
+        '<button class="btn sm" onclick="bukaTentang(\'privasi\')">🔒 Privasi</button>'+
       '</div></div>'+
     (isGas() ? '' :
       '<div><label class="f">URL Web App Apps Script (/exec)</label>'+
@@ -5708,6 +6116,44 @@ function hapusCache(){
 /* ============================================================
  * INISIALISASI
  * ============================================================ */
+/**
+ * Pemberitahuan privasi sekali jalan.
+ *
+ * Pemberitahuan yang hanya tersembunyi di dalam Pengaturan praktis tidak
+ * pernah terbaca. Ini muncul sekali per perangkat, tidak menghalangi
+ * pemakaian, dan dapat ditutup.
+ */
+var LS_PRIVASI = 'warganet_privasi_v1';
+
+function sudahLihatPrivasi(){
+  try{ return localStorage.getItem(LS_PRIVASI) === '1'; }catch(e){ return true; }
+}
+
+function tandaiLihatPrivasi(){
+  try{ localStorage.setItem(LS_PRIVASI, '1'); }catch(e){}
+  var el = $('bilahPrivasi');
+  if(el && el.parentNode) el.parentNode.removeChild(el);
+}
+
+function tampilkanBilahPrivasi(){
+  if(sudahLihatPrivasi()) return;
+  if($('bilahPrivasi')) return;
+
+  var el = document.createElement('div');
+  el.id = 'bilahPrivasi';
+  el.style.cssText = 'border:2px solid #000;background:#fef9c3;padding:10px 12px;'+
+    'font-size:12px;font-weight:700;margin:10px;display:flex;gap:9px;'+
+    'align-items:center;flex-wrap:wrap;line-height:1.5';
+  el.innerHTML = '<span style="flex:1;min-width:200px">🔒 Aplikasi ini menyimpan data pribadi '+
+    'warga. Bacalah pemberitahuan privasinya agar Anda tahu data apa yang disimpan dan hak '+
+    'Anda atas data itu.</span>'+
+    '<button class="btn sm dark" onclick="tandaiLihatPrivasi(); bukaTentang(\'privasi\');">Baca</button>'+
+    '<button class="btn sm" onclick="tandaiLihatPrivasi()">Nanti</button>';
+
+  var induk = document.querySelector('main') || document.body;
+  induk.parentNode.insertBefore(el, induk);
+}
+
 function boot(){
   $('btnRole').onclick = toggleRole;
   $('btnAI').onclick   = openAI;
@@ -5728,6 +6174,7 @@ function boot(){
   }
 
   refresh().then(function(){
+    tampilkanBilahPrivasi();
     pulihkanSesiLokal();
     return flushOutbox();
   }).catch(function(err){
