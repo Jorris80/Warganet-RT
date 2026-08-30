@@ -1385,7 +1385,13 @@ window.addEventListener('offline', function(){ S.online=false; updateNetBar(); r
 /* ============================================================
  * MODAL — generik
  * ============================================================ */
-function closeModal(){ $('modals').innerHTML=''; }
+function closeModal(){
+  /* Lepaskan kamera bila yang sedang tertutup adalah pemindai kartu. */
+  if($('pindaiVideo')){
+    try{ hentikanKamera(); }catch(e){}
+  }
+  $('modals').innerHTML='';
+}
 
 function openModal(title, bodyHtml, footerHtml, wide){
   $('modals').innerHTML =
@@ -1395,6 +1401,7 @@ function openModal(title, bodyHtml, footerHtml, wide){
       (footerHtml ? '<div class="mf">'+footerHtml+'</div>' : '')+
     '</div></div>';
   $('ov').addEventListener('mousedown', function(e){ if(e.target.id==='ov') closeModal(); });
+  navPasangJangkar();
 }
 
 /**
@@ -1543,6 +1550,8 @@ function zoomFoto(foto, judul){
   if(!src){ toast('Belum ada foto untuk ditampilkan.','info'); return; }
   ZOOM = {sk:1, x:0, y:0, drag:false, px:0, py:0, pinch:0, psk:1};
 
+  navPasangJangkar();
+
   var box = document.createElement('div');
   box.className = 'lbox'; box.id = 'lbox';
   box.innerHTML =
@@ -1678,6 +1687,120 @@ function konfirmasi(pesan, aksi){
 /* ============================================================
  * NAVIGASI
  * ============================================================ */
+/* ============================================================
+ * TOMBOL KEMBALI PONSEL
+ *
+ * Tanpa ini, menekan tombol kembali di Android langsung menutup
+ * aplikasi — termasuk saat sedang membuka formulir yang belum
+ * tersimpan. Yang diharapkan pengguna adalah mundur selapis.
+ *
+ * Cara kerjanya: aplikasi selalu menyisakan satu entri riwayat
+ * cadangan ("jangkar"). Menekan kembali memakan jangkar itu,
+ * peristiwa popstate menutup lapisan teratas, lalu jangkar baru
+ * dipasang kembali. Dengan satu jangkar saja, menutup lapisan
+ * lewat tombol di layar tidak perlu menyentuh riwayat sama sekali,
+ * sehingga tumpukan tidak pernah melenceng.
+ *
+ * Urutan mundurnya: foto diperbesar → jendela → tab sebelumnya →
+ * konfirmasi keluar.
+ * ============================================================ */
+
+var NAV = {
+  siap: false,        // false bila peramban menolak History API
+  jangkar: false,     // apakah entri cadangan sedang terpasang
+  tab: [],            // riwayat tab yang dikunjungi
+  keluarPada: 0       // kapan peringatan keluar terakhir ditampilkan
+};
+
+var NAV_JEDA_KELUAR = 2200;   // tenggat menekan kembali dua kali
+
+function navPasangJangkar(){
+  if(!NAV.siap || NAV.jangkar) return;
+  try{
+    history.pushState({wn:'jangkar'}, '');
+    NAV.jangkar = true;
+  }catch(e){
+    NAV.siap = false;   // peramban menolak; kembalikan ke perilaku bawaan
+  }
+}
+
+/** Benar bila foto sedang diperbesar. */
+function navAdaZoom(){ return !!$('lbox'); }
+
+/** Benar bila ada jendela terbuka. */
+function navAdaModal(){
+  var m = $('modals');
+  return !!(m && m.innerHTML.trim());
+}
+
+/**
+ * Tutup satu lapisan teratas.
+ * Mengembalikan true bila ada yang ditutup.
+ */
+function navTutupLapisan(){
+  if(navAdaZoom()){ tutupZoom(); return true; }
+  if(navAdaModal()){ closeModal(); return true; }
+  return false;
+}
+
+function navPop(){
+  NAV.jangkar = false;          // jangkar barusan dimakan tombol kembali
+
+  /* 1. lapisan yang menutupi layar */
+  if(navTutupLapisan()){ navPasangJangkar(); return; }
+
+  /* 2. mundur ke tab sebelumnya */
+  if(NAV.tab.length > 1){
+    NAV.tab.pop();
+    var tujuan = NAV.tab[NAV.tab.length - 1];
+    S.tab = tujuan;
+    render();
+    try{ window.scrollTo({top:0, behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+    navPasangJangkar();
+    return;
+  }
+
+  /* 3. sudah di tab awal — minta penekanan kedua sebelum keluar */
+  if(Date.now() - NAV.keluarPada < NAV_JEDA_KELUAR){
+    return;                     // jangkar sengaja tidak dipasang: biarkan keluar
+  }
+
+  NAV.keluarPada = Date.now();
+  toast('Tekan kembali sekali lagi untuk keluar.','info');
+  navPasangJangkar();
+}
+
+/** Catat perpindahan tab agar tombol kembali tahu tujuannya. */
+function navCatatTab(tab){
+  if(!NAV.siap) return;
+  var t = NAV.tab;
+  if(t.length && t[t.length-1] === tab) return;
+
+  /* Bila tab ini sudah pernah dikunjungi, potong sampai ke sana supaya
+     riwayat tidak menggelembung saat pengguna bolak-balik. */
+  var i = t.indexOf(tab);
+  if(i >= 0) t.length = i + 1;
+  else t.push(tab);
+
+  if(t.length > 12) t.shift();
+  navPasangJangkar();
+}
+
+function navMulai(){
+  if(typeof history === 'undefined' || !history.pushState) return;
+
+  try{
+    history.replaceState({wn:'dasar'}, '');
+  }catch(e){
+    return;                     // Apps Script kadang membatasi ini
+  }
+
+  NAV.siap = true;
+  NAV.tab = [S.tab || 'overview'];
+  window.addEventListener('popstate', navPop);
+  navPasangJangkar();
+}
+
 var TABS = [
   {id:'overview',   l:'Ringkasan',        i:'📊'},
   {id:'warga',      l:'Data Warga',       i:'👥'},
@@ -1699,7 +1822,12 @@ function renderTabs(){
            '<span>'+t.i+'</span><span>'+esc(t.l)+'</span></button>';
   }).join('');
 }
-function go(tab){ S.tab = tab; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+function go(tab){
+  S.tab = tab;
+  navCatatTab(tab);
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
 /* ============================================================
  * RENDER UTAMA
@@ -6162,6 +6290,7 @@ function boot(){
 
   loadCache();
   S.ready = true;
+  navMulai();
   render();
   updateNetBar();
 
