@@ -86,10 +86,23 @@ header{position:sticky;top:0;z-index:40;background:#111;color:#fff;border-bottom
 #netbar.sync{background:var(--blue);color:#fff}
 
 /* ---------- tabs ---------- */
-.tabwrap{max-width:1200px;margin:14px auto 0;padding:0 14px}
+.tabwrap{max-width:1200px;margin:14px auto 0;padding:0 14px;position:relative}
 .tabs{background:#fff;border:2px solid #000;box-shadow:var(--shadow);padding:8px;
   overflow-x:auto;white-space:nowrap;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
+/* panah penanda bar tab masih bisa digeser ke samping */
+.tabnav{display:none;position:absolute;top:50%;margin-top:-15px;width:24px;height:30px;
+  align-items:center;justify-content:center;padding:0;cursor:pointer;z-index:4;
+  border:2px solid #000;background:#fff;color:#111;box-shadow:2px 2px 0 #000;
+  font-size:15px;font-weight:900;line-height:1;font-family:inherit}
+.tabnav.on{display:flex}
+.tabnav:hover{background:var(--acc)}
+.tabnav.kiri{left:19px}
+.tabnav.kanan{right:19px}
+.tabfade{display:none;position:absolute;top:2px;bottom:2px;width:46px;pointer-events:none;z-index:3}
+.tabfade.on{display:block}
+.tabfade.kiri{left:16px;background:linear-gradient(90deg,#fff 42%,rgba(255,255,255,0))}
+.tabfade.kanan{right:16px;background:linear-gradient(270deg,#fff 42%,rgba(255,255,255,0))}
 .tab{display:inline-flex;align-items:center;gap:6px;border:2px solid #000;padding:7px 11px;
   font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;margin-right:6px;
   background:#f8fafc;box-shadow:2px 2px 0 #000}
@@ -320,7 +333,15 @@ main{max-width:1200px;margin:0 auto;padding:14px}
 
 <div id="netbar"></div>
 
-<div class="tabwrap"><div class="tabs" id="tabs"></div></div>
+<div class="tabwrap">
+  <span class="tabfade kiri" id="tabFadeKiri"></span>
+  <button type="button" class="tabnav kiri" id="tabKiri" title="Geser tab ke kiri"
+    aria-label="Geser tab ke kiri" onclick="tabGeser(-1)">&#8249;</button>
+  <div class="tabs" id="tabs"></div>
+  <span class="tabfade kanan" id="tabFadeKanan"></span>
+  <button type="button" class="tabnav kanan" id="tabKanan" title="Geser tab ke kanan"
+    aria-label="Geser tab ke kanan" onclick="tabGeser(1)">&#8250;</button>
+</div>
 
 <main id="view"><div class="empty">Memuat data…</div></main>
 
@@ -1821,6 +1842,75 @@ function renderTabs(){
     return '<button class="tab'+(S.tab===t.id?' active':'')+'" onclick="go(\''+t.id+'\')">'+
            '<span>'+t.i+'</span><span>'+esc(t.l)+'</span></button>';
   }).join('');
+  tabPanahMulai();
+  tabGulirKeAktif();
+  tabPanahPerbarui();
+}
+
+/* ============================================================
+   PANAH GESER BAR TAB
+   Bar tab lebih lebar daripada layar ponsel, jadi sebagian tab
+   tersembunyi di samping. Dua panah kecil muncul hanya bila
+   memang masih ada tab di arah itu, dan hilang begitu ujung
+   strip tercapai.
+   ============================================================ */
+var TAB_PANAH_SIAP = false;
+var TAB_PANAH_SISA = 2;   /* toleransi pembulatan piksel browser */
+
+function tabPanahPerbarui(){
+  var el = $('tabs'), kiri = $('tabKiri'), kanan = $('tabKanan');
+  if(!el || !kiri || !kanan) return;
+  var fKiri = $('tabFadeKiri'), fKanan = $('tabFadeKanan');
+  var lebih = el.scrollWidth - el.clientWidth;
+  var x     = el.scrollLeft;
+  var adaKiri  = lebih > TAB_PANAH_SISA && x > TAB_PANAH_SISA;
+  var adaKanan = lebih > TAB_PANAH_SISA && x < lebih - TAB_PANAH_SISA;
+  kiri.classList[adaKiri ? 'add' : 'remove']('on');
+  kanan.classList[adaKanan ? 'add' : 'remove']('on');
+  if(fKiri)  fKiri.classList[adaKiri ? 'add' : 'remove']('on');
+  if(fKanan) fKanan.classList[adaKanan ? 'add' : 'remove']('on');
+}
+
+function tabGeser(arah){
+  var el = $('tabs');
+  if(!el) return;
+  var langkah = Math.max(120, Math.round(el.clientWidth * 0.7)) * arah;
+  try{ el.scrollBy({left:langkah, behavior:'smooth'}); }
+  catch(e){ el.scrollLeft = el.scrollLeft + langkah; }
+  setTimeout(tabPanahPerbarui, 420);
+}
+
+/* Pastikan tab yang sedang aktif terlihat, bukan tersembunyi di samping. */
+function tabGulirKeAktif(){
+  var el = $('tabs');
+  if(!el) return;
+  var aktif = el.querySelector('.tab.active');
+  if(!aktif || !el.getBoundingClientRect) return;
+  var rE = el.getBoundingClientRect(), rA = aktif.getBoundingClientRect();
+  if(!rE.width) return;
+  var mulai = rA.left  - rE.left;
+  var henti = rA.right - rE.left;
+  var tampak = el.clientWidth;
+  var geser = 0;
+  if(mulai < 10)              geser = mulai - 10;
+  else if(henti > tampak-10)  geser = henti - (tampak - 10);
+  if(!geser) return;
+  try{ el.scrollBy({left:geser, behavior:'smooth'}); }
+  catch(e){ el.scrollLeft = el.scrollLeft + geser; }
+  setTimeout(tabPanahPerbarui, 420);
+}
+
+function tabPanahMulai(){
+  if(TAB_PANAH_SIAP) return;
+  var el = $('tabs');
+  if(!el || !el.addEventListener) return;
+  TAB_PANAH_SIAP = true;
+  try{ el.addEventListener('scroll', tabPanahPerbarui, {passive:true}); }
+  catch(e){ el.addEventListener('scroll', tabPanahPerbarui); }
+  window.addEventListener('resize', tabPanahPerbarui);
+  if(window.ResizeObserver){
+    try{ new ResizeObserver(tabPanahPerbarui).observe(el); }catch(e){}
+  }
 }
 function go(tab){
   S.tab = tab;
