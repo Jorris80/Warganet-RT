@@ -12,7 +12,7 @@
  * mendapat versi terbaru, bukan versi lama dari cache.
  */
 
-var CACHE_VERSION = 'warganet-v7';
+var CACHE_VERSION = 'warganet-v8';
 
 /** Cache terpisah untuk ubin peta & foto agar tidak ikut terhapus saat shell naik versi. */
 var CACHE_FOTO  = 'warganet-foto-v1';
@@ -31,6 +31,8 @@ var VENDOR = [
   './lib/leaflet.css',
   './lib/leaflet.js',
   './lib/hls.min.js',
+  './lib/pmtiles.js',
+  './lib/protomaps-leaflet.js',
   './lib/LISENSI-PIHAK-KETIGA.txt'
 ];
 
@@ -162,6 +164,16 @@ self.addEventListener('fetch', function (event) {
     );
     return;
   }
+
+  /*
+   * 5b. Berkas .pmtiles diteruskan apa adanya, tidak pernah masuk cache
+   * Service Worker. Berkas seperti ini bisa berukuran ratusan megabyte dan
+   * dibaca sepotong-sepotong lewat permintaan Range; menyimpannya di sini
+   * akan memenuhi kuota penyimpanan peramban tanpa guna. Peramban sendiri
+   * sudah menangani cache Range dengan benar, dan untuk pemakaian luring
+   * berkasnya dipilih langsung dari penyimpanan perangkat.
+   */
+  if (/\.pmtiles(\?|$)/i.test(url.pathname + url.search)) return;
 
   // 6. Layanan lain (QR, siaran CCTV) diteruskan apa adanya.
   if (url.hostname.indexOf('api.qrserver.com') >= 0 ||

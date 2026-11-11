@@ -582,12 +582,13 @@ var S = {
   ready:false, online:navigator.onLine, role:'warga', tab:'overview',
   settings:{appTitle:'WargaNet RT 05',appSubtitle:'Villa Harmony',managerPin:'1234',
             iuranNominal:'150000',namaRT:'RT 05 / RW 02',
-            petaLat:'-6.9034',petaLng:'107.6181',petaZoom:'18',petaBasemap:'grid',
+            petaLat:'-6.9034',petaLng:'107.6181',petaZoom:'18',petaBasemap:'osm',
             petaPenyedia:'',petaKunci:'',petaUrlKustom:'',petaNamaKustom:'',
-            petaZoomKustom:'19',petaKreditKustom:''},
+            petaZoomKustom:'19',petaKreditKustom:'',
+            petaPmtilesUrl:'',petaPmtilesNama:''},
   warga:[],pengurus:[],iuran:[],kas:[],aset:[],pengaduan:[],voting:[],
   pengumuman:[],diskusi:[],patroli:[],panic:[],logs:[],
-  bidang:[], cctv:[], patroliSesi:[], anggota:[],
+  bidang:[], cctv:[], patroliSesi:[], anggota:[], lapak:[],
   lisensi:{aktif:true, jenis:'percobaan', pesan:''},
   aiEnabled:false, me:null, outbox:[], aiChat:[], aplikasi:{}
 };
@@ -631,7 +632,7 @@ function applyBootstrap(d, fromCache){
   if(!d) return;
   ['settings','warga','pengurus','iuran','kas','aset','pengaduan','voting',
    'pengumuman','diskusi','patroli','panic','logs',
-   'bidang','cctv','patroliSesi','anggota','lisensi'].forEach(function(k){
+   'bidang','cctv','patroliSesi','anggota','lapak','lisensi'].forEach(function(k){
     if(d[k] !== undefined) S[k] = d[k];
   });
   if(d.aiEnabled !== undefined) S.aiEnabled = d.aiEnabled;
@@ -1012,10 +1013,192 @@ function uraiWms(url, lapisan){
   return {url:u, layers:nama};
 }
 
+/* ------------------------------------------------------------------
+ * PMTILES — seluruh peta dalam SATU berkas
+ *
+ * Satu berkas .pmtiles memuat semua ubin sekaligus. Dua cara memakainya:
+ *
+ *   Daring  — berkas diletakkan di suatu alamat web. Aplikasi hanya mengambil
+ *             potongan yang sedang dilihat (HTTP Range), bukan seluruh berkas.
+ *   Luring  — berkas dipilih langsung dari penyimpanan perangkat. Setelah itu
+ *             peta bekerja tanpa internet sama sekali.
+ *
+ * Isi berkas boleh raster (PNG/JPEG) maupun vektor (MVT); aplikasi membaca
+ * sendiri jenisnya dari kepala berkas lalu memilih penggambar yang sesuai,
+ * sehingga pengguna tidak perlu tahu bedanya.
+ *
+ * Inilah jawaban yang benar untuk "peta luring". Kebijakan ubin OpenStreetMap
+ * MELARANG pengunduhan massal dan penyimpanan ubin untuk dipakai luring,
+ * jadi peta OSM di aplikasi ini hanya dipakai saat daring.
+ * ------------------------------------------------------------------ */
+var PMT = {siap:false, inst:null, header:null, nama:'', kredit:'', dari:'', galat:''};
+var _pmtP = null;
+
+/** Jalankan kode pustaka seperti tag <script> biasa agar variabelnya global. */
+function jalankanSkrip(kode){
+  var sc = document.createElement('script');
+  sc.textContent = kode;
+  document.head.appendChild(sc);
+}
+
+function sumberTertanam(id){
+  var el = document.getElementById(id);
+  if(!el) return null;
+  var s = String(el.textContent || '');
+  return s.length > 5000 ? s : null;
+}
+
+/** Muat pustaka PMTiles (dan penggambar vektornya) sekali saja. */
+function ensurePmtiles(){
+  if(typeof pmtiles !== 'undefined' && pmtiles.PMTiles) return Promise.resolve(true);
+  if(_pmtP) return _pmtP;
+
+  _pmtP = new Promise(function(resolve, reject){
+    var a = sumberTertanam('pmtilesSrc');
+    var b = sumberTertanam('pmleafletSrc');
+    if(a){
+      try{
+        jalankanSkrip(a);
+        if(b) jalankanSkrip(b);
+      }catch(e){
+        _pmtP = null;
+        return reject(new Error('Pustaka PMTiles tertanam gagal dijalankan: '+e.message));
+      }
+      return (typeof pmtiles !== 'undefined' && pmtiles.PMTiles)
+        ? resolve(true)
+        : reject(new Error('Pustaka PMTiles tertanam tidak lengkap.'));
+    }
+
+    /* Paket GitHub Pages: berkas lokal di folder lib/. */
+    function muat(src){
+      return new Promise(function(ok, gagal){
+        var sc = document.createElement('script');
+        sc.src = src;
+        sc.onload = function(){ ok(true); };
+        sc.onerror = function(){ gagal(new Error('Gagal memuat '+src)); };
+        document.head.appendChild(sc);
+      });
+    }
+    muat('lib/pmtiles.js')
+      .then(function(){ return muat('lib/protomaps-leaflet.js').catch(function(){ return true; }); })
+      .then(function(){
+        (typeof pmtiles !== 'undefined' && pmtiles.PMTiles)
+          ? resolve(true)
+          : reject(new Error('Pustaka PMTiles tidak ditemukan di folder lib/.'));
+      })
+      .catch(function(e){ _pmtP = null; reject(e); });
+  });
+  return _pmtP;
+}
+
+/** Buka sumber PMTiles lalu baca kepalanya. sumber: alamat web atau objek File. */
+function bukaPmtiles(sumber, nama, dari){
+  return ensurePmtiles().then(function(){
+    var src = (typeof sumber === 'string')
+      ? new pmtiles.FetchSource(sumber)
+      : new pmtiles.FileSource(sumber);
+    var p = new pmtiles.PMTiles(src);
+    return p.getHeader().then(function(h){
+      PMT.siap   = true;
+      PMT.inst   = p;
+      PMT.header = h;
+      PMT.nama   = nama || 'berkas';
+      PMT.dari   = dari || '';
+      PMT.galat  = '';
+      return h;
+    });
+  }).catch(function(e){
+    PMT.siap = false; PMT.inst = null; PMT.header = null;
+    PMT.galat = pesanGalatPmtiles(e, dari);
+    throw new Error(PMT.galat);
+  });
+}
+
+/**
+ * Terjemahkan galat pustaka PMTiles menjadi kalimat yang bisa ditindaklanjuti.
+ * Pesan aslinya berbahasa Inggris dan menyebut istilah yang asing bagi pengurus RT.
+ */
+function pesanGalatPmtiles(e, dari){
+  var m = String((e && e.message) || e || '');
+
+  if(/byte serving|content-length/i.test(m)){
+    return 'Server penyimpan berkas tidak melayani permintaan sebagian berkas '+
+           '(HTTP Range). Pindahkan berkas ke GitHub Pages, Cloudflare R2, atau '+
+           'Google Cloud Storage — ketiganya mendukungnya.';
+  }
+  if(/failed to fetch|networkerror|load failed/i.test(m)){
+    return dari === 'url'
+      ? 'Berkas tidak dapat diambil. Periksa alamatnya, dan pastikan server '+
+        'mengizinkan akses dari situs lain (CORS).'
+      : 'Berkas tidak dapat dibaca dari perangkat ini.';
+  }
+  if(/404|not found/i.test(m)){
+    return 'Berkas tidak ditemukan di alamat itu.';
+  }
+  if(/archive|magic|invalid|pmtiles/i.test(m)){
+    return 'Berkas ini sepertinya bukan berkas .pmtiles yang sah.';
+  }
+  return m;
+}
+
+function tutupPmtiles(){
+  PMT.siap = false; PMT.inst = null; PMT.header = null;
+  PMT.nama = ''; PMT.dari = ''; PMT.galat = '';
+}
+
+/** Ringkasan isi berkas untuk ditampilkan di Pengaturan. */
+function ringkasPmtiles(){
+  if(!PMT.siap || !PMT.header) return '';
+  var h = PMT.header;
+  var jenis = (pmtiles.TileType && h.tileType === pmtiles.TileType.Mvt) ? 'vektor' : 'raster';
+  return jenis+' • zoom '+h.minZoom+'–'+h.maxZoom;
+}
+
+/**
+ * Bangun lapisan Leaflet dari berkas PMTiles yang sudah terbuka.
+ * Vektor digambar oleh protomaps-leaflet; raster oleh pembungkus bawaan pmtiles.
+ */
+function buatLapisanPmtiles(){
+  if(!PMT.siap || !PMT.inst || typeof pmtiles === 'undefined') return null;
+  var h = PMT.header;
+  var kredit = PMT.kredit || 'Ubin PMTiles: '+esc(PMT.nama);
+
+  try{
+    if(pmtiles.TileType && h.tileType === pmtiles.TileType.Mvt){
+      if(typeof protomapsL === 'undefined' || !protomapsL.leafletLayer){
+        toast('Berkas ini berisi peta vektor, tetapi penggambar vektornya tidak tersedia.','err');
+        return null;
+      }
+      return protomapsL.leafletLayer({
+        url: PMT.inst,
+        maxDataZoom: h.maxZoom,
+        attribution: kredit
+      });
+    }
+    return pmtiles.leafletRasterLayer(PMT.inst, {
+      maxNativeZoom: h.maxZoom,
+      maxZoom: ZOOM_MAKS,
+      attribution: kredit
+    });
+  }catch(e){
+    toast('Lapisan PMTiles gagal dibuat: '+e.message,'err');
+    return null;
+  }
+}
+
 function basemapDefs(){
   var out = {
     grid: {nama:'Peta Grid (tanpa internet)', jenis:'grid',
-           kredit:'Peta grid lokal — tanpa layanan pihak ketiga'}
+           kredit:'Peta grid lokal — tanpa layanan pihak ketiga'},
+
+    /* OpenStreetMap: langsung bisa dipakai, tanpa kunci, tanpa pendaftaran.
+       Syarat kebijakannya dipenuhi di sini — alamat HTTPS resmi dan kredit
+       yang selalu tampil di sudut peta. Ubinnya TIDAK boleh disimpan untuk
+       dipakai luring; untuk itu pakai PMTiles. */
+    osm:  {nama:'Peta Jalan (OpenStreetMap)', jenis:'xyz', maxNativeZoom:19,
+           url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+           kredit:'&copy; <a href="https://www.openstreetmap.org/copyright" '+
+                  'target="_blank" rel="noopener">Kontributor OpenStreetMap</a>'}
   };
 
   var kode = String(S.settings.petaPenyedia || '').trim();
@@ -1050,12 +1233,23 @@ function basemapDefs(){
     var set = PENYEDIA_PETA[kode].peta(kunci);
     for(var k in set) if(set.hasOwnProperty(k)) out[k] = set[k];
   }
+
+  if(PMT.siap){
+    out.pmtiles = {
+      nama: 'PMTiles — '+(PMT.nama || 'berkas lokal'),
+      jenis: 'pmtiles',
+      kredit: PMT.kredit || ''
+    };
+  }
   return out;
 }
 
-/** Benar bila peta dasar daring belum disiapkan pemilik sistem. */
+/**
+ * Benar bila belum ada peta dasar selain bawaan.
+ * Sejak v2.9.0 OpenStreetMap selalu tersedia, jadi ambangnya dua: Grid + OSM.
+ */
 function petaDasarBelumDisetel(){
-  return Object.keys(basemapDefs()).length <= 1;
+  return Object.keys(basemapDefs()).length <= 2;
 }
 
 /**
@@ -1168,6 +1362,10 @@ var LOCAL_MAP = {
   bidang_add:       {coll:'bidang',     op:'add',  pfx:'BDG'},
   bidang_update:    {coll:'bidang',     op:'upd'},
   bidang_delete:    {coll:'bidang',     op:'del'},
+  lapak_add:        {coll:'lapak',      op:'add',  pfx:'LPK'},
+  lapak_update:     {coll:'lapak',      op:'upd'},
+  lapak_status:     {coll:'lapak',      op:'upd'},
+  lapak_delete:     {coll:'lapak',      op:'del'},
   cctv_add:         {coll:'cctv',       op:'add',  pfx:'CAM'},
   cctv_update:      {coll:'cctv',       op:'upd'},
   cctv_delete:      {coll:'cctv',       op:'del'},
@@ -1830,6 +2028,7 @@ var TABS = [
   {id:'laporan',    l:'Laporan Kas',      i:'📄'},
   {id:'aset',       l:'Aset & Fasilitas', i:'📦'},
   {id:'pengaduan',  l:'Pengaduan',        i:'📣'},
+  {id:'lapak',      l:'Layanan & Jual Beli',i:'🛒'},
   {id:'patrol',     l:'Patroli & Peta',   i:'🛡️'},
   {id:'cctv',       l:'CCTV Live',        i:'📹'},
   {id:'voting',     l:'Voting Digital',   i:'🗳️'},
@@ -1932,7 +2131,7 @@ function render(){
   var v = $('view');
   var fn = ({
     overview:viewOverview, warga:viewWarga, organisasi:viewOrganisasi, iuran:viewIuran,
-    laporan:viewLaporan, aset:viewAset, pengaduan:viewPengaduan, patrol:viewPatrol,
+    laporan:viewLaporan, aset:viewAset, pengaduan:viewPengaduan, lapak:viewLapak, patrol:viewPatrol,
     cctv:viewCctv, voting:viewVoting, pengumuman:viewPengumuman, audit:viewAudit
   })[S.tab] || viewOverview;
 
@@ -3812,6 +4011,263 @@ function pakaiDraftAI(id, urgency){
 }
 
 /* ============================================================
+ * LAPAK WARGA — LAYANAN & JUAL BELI LOKAL
+ *
+ * Papan pengumuman jual beli antarwarga, bukan toko daring.
+ * Tidak ada pembayaran, keranjang, maupun ongkos kirim di dalam aplikasi:
+ * aplikasi hanya mempertemukan, lalu percakapan pindah ke WhatsApp dan
+ * serah terima dilakukan langsung. Begitu uang ikut ditangani, RT berubah
+ * menjadi penyelenggara transaksi dan ikut menanggung sengketanya —
+ * itu bukan urusan pengurus RT.
+ * ============================================================ */
+
+var LAPAK_KATEGORI = {
+  Jasa: ['Tukang & Servis','Laundry','Katering & Kue','Jahit & Permak','Ojek & Antar',
+         'Les & Kursus','Kebersihan','Kesehatan & Pijat','Rias & Salon','Lainnya'],
+  Jual: ['Makanan & Minuman','Sembako','Elektronik','Perabot','Kendaraan','Pakaian',
+         'Tanaman & Hewan','Lainnya'],
+  Cari: ['Tukang & Servis','Les & Kursus','Perabot','Elektronik','Kendaraan','Lainnya']
+};
+
+var LAPAK_SATUAN = ['nego','per buah','per kg','per porsi','per jam','per hari',
+                    'per minggu','per bulan','borongan','gratis'];
+
+var lapakJenis = 'Semua';
+var lapakCari  = '';
+
+function lapakSemuaKategori(){
+  var out = [], lihat = {};
+  ['Jasa','Jual','Cari'].forEach(function(j){
+    LAPAK_KATEGORI[j].forEach(function(k){ if(!lihat[k]){ lihat[k]=1; out.push(k); } });
+  });
+  return out;
+}
+
+function lencanaJenis(j){
+  var c = j==='Jasa' ? 'b-blue' : j==='Cari' ? 'b-violet' : 'b-green';
+  var i = j==='Jasa' ? '🛠️' : j==='Cari' ? '🔎' : '🏷️';
+  return '<span class="badge '+c+'">'+i+' '+esc(j)+'</span>';
+}
+
+function hargaLapak(o){
+  var n = Number(o.harga) || 0;
+  var s = String(o.satuan||'');
+  if(s === 'gratis') return 'Gratis';
+  if(!n) return 'Nego';
+  return rp(n) + (s && s!=='nego' ? ' <span class="sub" style="font-weight:600">'+esc(s)+'</span>' : '');
+}
+
+/** Benar bila lapak ini milik pengguna yang sedang memakai aplikasi. */
+function lapakMilikSaya(o){
+  if(isPengurus()) return true;
+  if(!S.me) return false;
+  if(o.pemilikWargaId && S.me.id && o.pemilikWargaId === S.me.id) return true;
+  return !!(o.pemilikNama && S.me.nama && o.pemilikNama === S.me.nama);
+}
+
+function viewLapak(){
+  var semua = S.lapak || [];
+  var aktif = semua.filter(function(o){ return o.status === 'Aktif'; });
+
+  var cari = lapakCari.toLowerCase();
+  var list = semua.filter(function(o){
+    /* yang nonaktif/ditolak hanya tampak bagi pemiliknya dan pengurus */
+    if(o.status !== 'Aktif' && o.status !== 'Terjual' && !lapakMilikSaya(o)) return false;
+    if(lapakJenis !== 'Semua' && o.jenis !== lapakJenis) return false;
+    if(!cari) return true;
+    return (String(o.judul||'')+' '+String(o.deskripsi||'')+' '+String(o.kategori||'')+' '+
+            String(o.pemilikNama||'')).toLowerCase().indexOf(cari) >= 0;
+  });
+
+  /* yang masih aktif naik ke atas, lalu yang terbaru */
+  list = list.slice().sort(function(a,b){
+    var sa = a.status==='Aktif' ? 0 : 1, sb = b.status==='Aktif' ? 0 : 1;
+    if(sa !== sb) return sa - sb;
+    return String(b.tanggalDibuat||'').localeCompare(String(a.tanggalDibuat||''));
+  });
+
+  var jasa = aktif.filter(function(o){return o.jenis==='Jasa';}).length;
+  var jual = aktif.filter(function(o){return o.jenis==='Jual';}).length;
+  var cariN= aktif.filter(function(o){return o.jenis==='Cari';}).length;
+
+  var h = hSection('🛒','Layanan & Jual Beli Lokal',
+    jasa+' jasa • '+jual+' barang dijual • '+cariN+' dicari',
+    '<button class="btn dark" onclick="formLapak()">+ Pasang Lapak</button>');
+
+  h += '<div class="card flat" style="background:#ecfdf5;margin-bottom:12px">'+
+    '<div class="sub">Papan ini mempertemukan warga saja. <b>Pembayaran dan serah terima '+
+    'dilakukan langsung antarwarga</b> — pengurus RT tidak menampung uang, tidak menjadi '+
+    'perantara, dan tidak menjamin barang atau jasanya. Periksa sendiri sebelum membayar.</div></div>';
+
+  h += '<div class="card" style="margin-bottom:12px">'+
+    '<div class="row">'+
+      ['Semua','Jasa','Jual','Cari'].map(function(f){
+        var label = f==='Jasa' ? '🛠️ Jasa' : f==='Jual' ? '🏷️ Dijual' : f==='Cari' ? '🔎 Dicari' : 'Semua';
+        return '<button class="chip'+(lapakJenis===f?' on':'')+'" '+
+               'onclick="lapakJenis=\''+jsq(f)+'\';render()">'+esc(label)+'</button>';
+      }).join('')+
+    '</div>'+
+    '<input class="inp" id="lapakCari" style="margin-top:8px" placeholder="Cari jasa, barang, atau nama warga…" '+
+      'value="'+esc(lapakCari)+'" oninput="lapakCari=this.value;cariLapakTunda()">'+
+  '</div>';
+
+  if(!list.length){
+    return h + '<div class="card"><div class="empty">Belum ada lapak pada pilihan ini.<br>'+
+      'Warga pertama yang memasang lapak biasanya paling cepat dapat pelanggan.</div></div>';
+  }
+
+  h += '<div class="stack">';
+  list.forEach(function(o){
+    var terjual = o.status === 'Terjual';
+    var mati    = o.status === 'Nonaktif' || o.status === 'Ditolak';
+    h += '<div class="card"'+(terjual||mati ? ' style="opacity:.62"' : '')+'>'+
+      '<div class="spread">'+
+        '<div><b style="font-size:14px">'+esc(o.judul)+'</b>'+pendingMark(o)+
+          '<div class="sub">'+esc(o.pemilikNama||'-')+(o.blok?' • '+esc(o.blok):'')+'</div></div>'+
+        '<div class="row">'+lencanaJenis(o.jenis)+
+          '<span class="badge b-gray">'+esc(o.kategori||'Lainnya')+'</span>'+
+          (terjual ? '<span class="badge b-red">Sudah Terjual</span>' : '')+
+          (o.status==='Nonaktif' ? '<span class="badge b-gray">Nonaktif</span>' : '')+
+          (o.status==='Ditolak'  ? '<span class="badge b-red">Ditolak Pengurus</span>' : '')+
+        '</div>'+
+      '</div>'+
+
+      (fotoSrc(o.fotoUrl)
+        ? '<div style="margin-top:10px"><img class="fotoprev kecil" src="'+esc(fotoSrc(o.fotoUrl,800))+'" '+
+          'alt="Foto: '+esc(o.judul)+'" loading="lazy" title="Ketuk untuk memperbesar" '+
+          'onclick="zoomFoto(\''+jsq(o.fotoUrl)+'\',\''+jsq(o.judul)+'\')" '+
+          'onerror="this.style.display=\'none\'"></div>'
+        : '')+
+
+      '<div style="margin-top:10px;font-size:13px">'+nl2br(o.deskripsi||'')+'</div>'+
+
+      '<div class="spread" style="margin-top:10px;align-items:flex-end">'+
+        '<div><div style="font-size:10px;font-weight:900;color:#64748b">HARGA</div>'+
+          '<b style="font-size:15px">'+hargaLapak(o)+'</b>'+
+          (o.kondisi ? '<div class="sub">Kondisi: '+esc(o.kondisi)+'</div>' : '')+
+        '</div>'+
+        '<div class="sub">'+(Number(o.dilihat)||0)+'× dilihat</div>'+
+      '</div>'+
+
+      (o.catatanPengurus ? '<div class="card flat" style="margin-top:10px;background:#fee2e2">'+
+        '<b style="font-size:11.5px">CATATAN PENGURUS</b><div style="margin-top:4px;font-size:12.5px">'+
+        nl2br(o.catatanPengurus)+'</div></div>' : '')+
+
+      '<div class="row" style="margin-top:10px">'+
+        (o.status==='Aktif' && o.noHp
+          ? '<button class="btn sm green" onclick="hubungiLapak(\''+jsq(o.id)+'\')">💬 Hubungi via WhatsApp</button>'
+          : '')+
+        (lapakMilikSaya(o)
+          ? '<button class="btn sm blue" onclick="formLapak(\''+jsq(o.id)+'\')">Ubah</button>'+
+            (o.status==='Aktif'
+              ? '<button class="btn sm" onclick="statusLapak(\''+jsq(o.id)+'\',\'Terjual\')">Tandai Terjual</button>'+
+                '<button class="btn sm" onclick="statusLapak(\''+jsq(o.id)+'\',\'Nonaktif\')">Nonaktifkan</button>'
+              : '<button class="btn sm green" onclick="statusLapak(\''+jsq(o.id)+'\',\'Aktif\')">Aktifkan Lagi</button>')
+          : '')+
+        (isPengurus()
+          ? '<button class="btn sm red" onclick="tolakLapak(\''+jsq(o.id)+'\')">Tolak</button>'+
+            '<button class="btn sm red" onclick="hapusLapak(\''+jsq(o.id)+'\')">Hapus</button>'
+          : '')+
+      '</div>'+
+    '</div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+/* Penundaan kecil supaya mengetik di kolom cari tidak menggambar ulang
+   seluruh daftar pada setiap huruf. */
+var _lapakTimer = null;
+function cariLapakTunda(){
+  if(_lapakTimer) clearTimeout(_lapakTimer);
+  _lapakTimer = setTimeout(function(){
+    render();
+    var el = $('lapakCari');
+    if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }, 350);
+}
+
+function formLapak(id){
+  var o = id ? (S.lapak||[]).filter(function(x){return x.id===id;})[0] : null;
+  var jenisAwal = o ? o.jenis : 'Jual';
+
+  formModal(o ? 'Ubah Lapak' : 'Pasang Lapak Baru', [
+    {k:'jenis',l:'Jenis Lapak (Jual = barang, Jasa = keahlian, Cari = dibutuhkan)',
+     t:'select',opt:['Jual','Jasa','Cari']},
+    {k:'judul',l:'Judul',t:'text',req:true,ph:'Contoh: Laundry kiloan cuci setrika'},
+    {k:'kategori',l:'Kategori',t:'select',opt:lapakSemuaKategori()},
+    {k:'deskripsi',l:'Keterangan',t:'textarea',req:true,
+     ph:'Jelaskan apa yang ditawarkan, jam layanan, dan syaratnya.'},
+    {k:'harga',l:'Harga (Rp) — kosongkan bila nego',t:'number'},
+    {k:'satuan',l:'Satuan Harga',t:'select',opt:LAPAK_SATUAN},
+    {k:'kondisi',l:'Kondisi Barang (khusus jual)',t:'select',
+     opt:['','Baru','Bekas - Seperti Baru','Bekas - Baik','Bekas - Perlu Perbaikan']},
+    {k:'pemilikNama',l:'Nama Anda',t:'text',req:true},
+    {k:'blok',l:'Alamat / Blok',t:'text'},
+    {k:'noHp',l:'Nomor WhatsApp (akan terlihat warga lain)',t:'text',req:true,
+     ph:'0812-xxxx-xxxx'},
+    {k:'fotoUrl',l:'Foto (opsional)',t:'foto',bukti:true}
+  ], o ? {
+    jenis:o.jenis, judul:o.judul, kategori:o.kategori, deskripsi:o.deskripsi,
+    harga:o.harga, satuan:o.satuan, kondisi:o.kondisi, pemilikNama:o.pemilikNama,
+    blok:o.blok, noHp:o.noHp, fotoUrl:o.fotoUrl
+  } : {
+    jenis:jenisAwal, satuan:'nego', kategori:'Lainnya',
+    pemilikNama:(S.me?S.me.nama:''), blok:(S.me?(S.me.blok+' '+S.me.noRumah):''),
+    noHp:(S.me?S.me.noHp:'')
+  }, function(v){
+    v.harga = Number(v.harga) || 0;
+    if(S.me) v.pemilikWargaId = S.me.id;
+    if(id){
+      v.id = id;
+      mutate('lapak_update', v, {okMsg:'Lapak diperbarui.'}).then(render).catch(function(){});
+    }else{
+      mutate('lapak_add', v, {okMsg:'Lapak terpasang. Warga lain sudah bisa melihatnya.'})
+        .then(render).catch(function(){});
+    }
+  }, true);
+}
+
+function statusLapak(id, status){
+  mutate('lapak_status', {id:id, status:status},
+    {okMsg:'Status lapak menjadi '+status+'.'}).then(render).catch(function(){});
+}
+
+function tolakLapak(id){
+  formModal('Tolak Lapak', [
+    {k:'catatanPengurus',l:'Alasan Penolakan',t:'textarea',req:true,
+     ph:'Contoh: isi lapak tidak sesuai ketentuan lingkungan.'}
+  ], {}, function(v){
+    mutate('lapak_status', {id:id, status:'Ditolak', catatanPengurus:v.catatanPengurus},
+      {okMsg:'Lapak ditolak dan disembunyikan dari warga.'}).then(render).catch(function(){});
+  });
+}
+
+function hapusLapak(id){
+  var o = (S.lapak||[]).filter(function(x){return x.id===id;})[0];
+  konfirmasi('Hapus lapak "'+(o?o.judul:id)+'" secara permanen?', function(){
+    mutate('lapak_delete', {id:id}, {okMsg:'Lapak dihapus.'}).then(render).catch(function(){});
+  });
+}
+
+function hubungiLapak(id){
+  var o = (S.lapak||[]).filter(function(x){return x.id===id;})[0];
+  if(!o) return;
+
+  /* hitungan dilihat hanya penanda ringan; kegagalannya tidak perlu diberitahukan */
+  if(S.online) callServer('lapak_lihat', {id:id}).catch(function(){});
+
+  var aku = S.me ? S.me.nama : 'warga';
+  var pesan = o.jenis === 'Cari'
+    ? 'Halo '+(o.pemilikNama||'')+', saya '+aku+' dari '+(S.settings.namaRT||'RT')+'. '+
+      'Saya lihat Anda sedang mencari "'+o.judul+'" di aplikasi warga. Mungkin saya bisa bantu.'
+    : 'Halo '+(o.pemilikNama||'')+', saya '+aku+' dari '+(S.settings.namaRT||'RT')+'. '+
+      'Saya tertarik dengan "'+o.judul+'" yang Anda pasang di aplikasi warga. Apakah masih tersedia?';
+  bukaWa(o.noHp, pesan);
+}
+
+
+/* ============================================================
  * 8. PATROLI & SOS
  * ============================================================ */
 function viewPatrol(){
@@ -3901,14 +4357,14 @@ function viewPatrol(){
         : '')+
     '</div>'+
     (petaDasarBelumDisetel()
-      ? '<div class="mapnote">🗺️ Peta dasar daring belum disiapkan, jadi yang tampil adalah '+
-        '<b>Peta Grid</b> — kisi koordinat yang digambar sendiri di perangkat. Seluruh fungsi peta '+
-        'tetap berjalan: bidang persil, pos jaga, dan posisi petugas tetap tergambar pada '+
-        'koordinat yang benar.'+
+      ? '<div class="mapnote">🗺️ Peta jalan <b>OpenStreetMap</b> sudah siap dipakai dan '+
+        'bisa dipilih di kotak di atas. Tersedia juga <b>Peta Grid</b> yang digambar sendiri '+
+        'di perangkat untuk lokasi tanpa sinyal.'+
         (isPengurus()
-          ? ' Untuk menampilkan citra satelit, masukkan kunci API Anda sendiri lewat '+
-            '<b>⚙️ Pengaturan → Peta Dasar</b>.'
-          : ' Hubungi pengurus bila citra satelit diperlukan.')+
+          ? ' Untuk <b>citra satelit</b>, masukkan kunci API Anda sendiri lewat '+
+            '<b>⚙️ Pengaturan → Peta Dasar</b>. Untuk peta yang tetap jalan tanpa internet, '+
+            'pasang berkas <b>PMTiles</b> di pengaturan yang sama.'
+          : ' Hubungi pengurus bila citra satelit atau peta luring diperlukan.')+
         '</div>'
       : '')+
     '<div class="sub" style="margin-bottom:8px">Tombol di atas hanya menyalakan dan mematikan '+
@@ -3986,7 +4442,8 @@ function viewPatrol(){
  * 8b. MESIN PETA (Leaflet)
  * ============================================================ */
 var MAPCFG = {
-  base:'satelit',
+  base:'osm',          // OpenStreetMap siap pakai tanpa kunci apa pun
+  dariSetelan:false,   // benar setelah pilihan tersimpan dibaca sekali
   show:{bidang:1, pos:1, live:1, cctv:1, label:1},
   view:null,           // {lat,lng,zoom} — dipertahankan antar-render
   ikut:false           // ikuti posisi sendiri secara otomatis saat berbagi lokasi
@@ -4081,6 +4538,15 @@ function lepasPeta(){
 
 function terapkanBasemap(){
   if(!MAP.inst) return;
+
+  /* Pilihan yang disimpan lewat "Simpan Tampilan Awal Peta" dibaca sekali
+     per sesi. Sebelum v2.9.0 nilai ini tersimpan tetapi tidak pernah dipakai. */
+  if(!MAPCFG.dariSetelan){
+    MAPCFG.dariSetelan = true;
+    var simpanan = String(S.settings.petaBasemap || '').trim();
+    if(simpanan) MAPCFG.base = simpanan;
+  }
+
   var semua = basemapDefs();
   var d = semua[MAPCFG.base];
 
@@ -4096,6 +4562,16 @@ function terapkanBasemap(){
   if(d.jenis === 'grid'){
     MAP.base = buatLapisanGrid();
     if(MAP.base) MAP.base.addTo(MAP.inst);
+  }else if(d.jenis === 'pmtiles'){
+    MAP.base = buatLapisanPmtiles();
+    if(MAP.base){
+      MAP.base.addTo(MAP.inst);
+    }else{
+      /* berkasnya hilang atau rusak — jangan biarkan peta kosong */
+      MAPCFG.base = 'grid';
+      MAP.base = buatLapisanGrid();
+      if(MAP.base) MAP.base.addTo(MAP.inst);
+    }
   }else if(d.jenis === 'wms'){
     MAP.base = L.tileLayer.wms(d.url, {
       layers: d.layers,
@@ -6008,9 +6484,13 @@ function openSettings(){
       '<div><label class="f">PIN Pengurus (4–8 digit)</label><input class="inp" id="setPin" value="'+esc(S.settings.managerPin)+'"></div>'+
       panelLisensi()+
       '<div class="card flat" style="background:#fef9c3"><b style="font-size:12px">🗺️ Peta Dasar</b>'+
-        '<div class="sub" style="margin-top:4px">Aplikasi ini tidak menyertakan layanan peta mana pun. '+
-        'Untuk menampilkan citra satelit, daftarkan kunci API atas nama Anda sendiri — dengan begitu '+
-        'kuota dan ketentuan layanannya berada di tangan Anda, bukan menumpang layanan pihak lain.</div>'+
+        '<div class="sub" style="margin-top:4px"><b>Peta Jalan OpenStreetMap sudah siap pakai</b> tanpa '+
+        'kunci apa pun — pilih saja di tab Patroli &amp; Peta. Kredit OpenStreetMap wajib tetap tampil '+
+        'di sudut peta dan tidak boleh disembunyikan, dan ubinnya tidak boleh disimpan untuk dipakai '+
+        'luring. Untuk peta luring, gunakan PMTiles di bawah.</div>'+
+        '<div class="sub" style="margin-top:4px">Untuk <b>citra satelit</b>, daftarkan kunci API atas nama '+
+        'Anda sendiri — dengan begitu kuota dan ketentuan layanannya berada di tangan Anda, bukan '+
+        'menumpang layanan pihak lain.</div>'+
         '<div class="grid g2" style="margin-top:8px">'+
           '<div><label class="f">Penyedia</label>'+
             '<select class="inp" id="setPenyedia" onchange="ubahPenyediaPeta(this.value)">'+
@@ -6052,6 +6532,8 @@ function openSettings(){
         '</div>'+
         '<div class="sub" id="petaDaftarLink" style="margin-top:6px">'+linkDaftarPenyedia()+'</div>'+
       '</div>'+
+      kartuPmtiles()+
+      kartuAi()+
       '<div class="card flat" style="background:#f8fafc"><b style="font-size:12px">📍 Tampilan Awal Peta</b>'+
         '<div class="grid g3" style="margin-top:8px">'+
           '<div><label class="f">Lintang</label><input class="inp" id="setLat" value="'+esc(S.settings.petaLat||'')+'" placeholder="-6.903400"></div>'+
@@ -6066,7 +6548,271 @@ function openSettings(){
       '<button class="btn red" onclick="hapusCache()">🗑️ Hapus Cache Lokal</button></div>',
     '<button class="btn" onclick="closeModal()">Tutup</button>'+
     '<button class="btn dark" onclick="simpanSettings()">Simpan</button>', true);
+
+  /* Status AI diambil dari server setelah modalnya ada di DOM. */
+  if(isPengurus()) setTimeout(muatStatusAi, 60);
 }
+/* ============================================================
+ * PENGATURAN PETA PMTILES
+ * ============================================================ */
+
+function statusPmtilesTeks(){
+  if(PMT.galat) return '⚠️ '+esc(PMT.galat);
+  if(!PMT.siap) return 'Belum ada berkas PMTiles yang terbuka.';
+  return '✅ <b>'+esc(PMT.nama)+'</b> — '+esc(ringkasPmtiles())+
+         ' • sumber: '+(PMT.dari==='berkas' ? 'berkas di perangkat (luring)' : 'alamat web');
+}
+
+function segarkanInfoPmtiles(){
+  var el = $('pmtilesInfo');
+  if(el) el.innerHTML = statusPmtilesTeks();
+  var t = $('pmtilesTombolLepas');
+  if(t) t.style.display = PMT.siap ? '' : 'none';
+}
+
+function kartuPmtiles(){
+  return '<div class="card flat" style="background:#eff6ff"><b style="font-size:12px">🧩 Peta PMTiles (bisa dipakai luring)</b>'+
+    '<div class="sub" style="margin-top:4px">Satu berkas <b>.pmtiles</b> memuat seluruh ubin peta sekaligus. '+
+    'Taruh di alamat web agar dipakai bersama seluruh warga, atau pilih langsung dari penyimpanan '+
+    'perangkat supaya peta tetap jalan <b>tanpa internet sama sekali</b>. Jenis isinya (raster atau '+
+    'vektor) dikenali sendiri oleh aplikasi.</div>'+
+    '<label class="f" style="margin-top:8px">Alamat berkas .pmtiles (dipakai bersama)</label>'+
+    '<input class="inp" id="setPmtilesUrl" value="'+esc(S.settings.petaPmtilesUrl||'')+'" '+
+      'placeholder="https://contoh.id/peta/rt05.pmtiles">'+
+    '<div class="sub" style="margin-top:4px">Server penyimpan berkas harus mengizinkan permintaan '+
+    'Range dan CORS. GitHub Pages, Cloudflare R2, dan Google Cloud Storage sudah memenuhinya.</div>'+
+    '<div class="row" style="margin-top:8px">'+
+      '<button class="btn sm blue" onclick="pakaiPmtilesUrl()">🌐 Buka dari Alamat</button>'+
+      '<button class="btn sm" onclick="pilihBerkasPmtiles()">📂 Pilih Berkas di Perangkat</button>'+
+      '<button class="btn sm red" id="pmtilesTombolLepas" style="display:'+(PMT.siap?'':'none')+'" '+
+        'onclick="lepasPmtiles()">Lepas</button>'+
+    '</div>'+
+    '<input type="file" id="pmtilesBerkas" accept=".pmtiles,application/octet-stream" '+
+      'style="display:none" onchange="pakaiPmtilesBerkas(this)">'+
+    '<div class="sub" id="pmtilesInfo" style="margin-top:8px">'+statusPmtilesTeks()+'</div>'+
+    '<div class="sub" style="margin-top:6px">Berkas dari perangkat hanya berlaku selama aplikasi '+
+    'dibuka; pilih ulang setelah aplikasi ditutup. Alamat web tersimpan permanen di pengaturan.</div>'+
+  '</div>';
+}
+
+function pilihBerkasPmtiles(){
+  var el = $('pmtilesBerkas');
+  if(el) el.click();
+}
+
+/** Setelah berkas terbuka, langsung tampilkan di peta bila sedang dibuka. */
+function setelahPmtilesSiap(){
+  segarkanInfoPmtiles();
+  MAPCFG.base = 'pmtiles';
+  if(MAP.inst) terapkanBasemap();
+  toast('Peta PMTiles aktif: '+PMT.nama,'ok');
+}
+
+function pakaiPmtilesUrl(){
+  var u = ($('setPmtilesUrl') ? $('setPmtilesUrl').value : '').trim();
+  if(!/^https?:\/\//i.test(u)){ toast('Alamat harus diawali http:// atau https://','err'); return; }
+  var nama = u.split('/').pop().split('?')[0] || 'peta.pmtiles';
+  toast('Membuka berkas PMTiles…','info');
+  bukaPmtiles(u, nama, 'url').then(function(){
+    S.settings.petaPmtilesUrl = u;
+    S.settings.petaPmtilesNama = nama;
+    mutate('settings_update', {petaPmtilesUrl:u, petaPmtilesNama:nama}, {silent:true}).catch(function(){});
+    setelahPmtilesSiap();
+  }).catch(function(e){
+    segarkanInfoPmtiles();
+    toast('Gagal membuka PMTiles: '+e.message,'err');
+  });
+}
+
+function pakaiPmtilesBerkas(input){
+  var f = input && input.files && input.files[0];
+  if(!f) return;
+  toast('Membaca berkas…','info');
+  bukaPmtiles(f, f.name, 'berkas').then(function(){
+    setelahPmtilesSiap();
+  }).catch(function(e){
+    segarkanInfoPmtiles();
+    toast('Berkas tidak terbaca: '+e.message,'err');
+  });
+  input.value = '';
+}
+
+function lepasPmtiles(){
+  tutupPmtiles();
+  if(MAPCFG.base === 'pmtiles'){
+    MAPCFG.base = 'osm';
+    if(MAP.inst) terapkanBasemap();
+  }
+  segarkanInfoPmtiles();
+  toast('Peta PMTiles dilepas.','ok');
+}
+
+/**
+ * Buka berkas PMTiles yang alamatnya tersimpan di pengaturan.
+ * Dipanggil sekali saat aplikasi siap, tanpa mengganggu bila gagal.
+ */
+function pmtilesOtomatis(){
+  var u = String(S.settings.petaPmtilesUrl || '').trim();
+  if(!u || PMT.siap) return;
+  bukaPmtiles(u, S.settings.petaPmtilesNama || 'peta.pmtiles', 'url').then(function(){
+    if(MAP.inst && MAPCFG.base === 'pmtiles') terapkanBasemap();
+  }).catch(function(){ /* diam: peta lain tetap bisa dipakai */ });
+}
+
+
+/* ============================================================
+ * PENGATURAN KUNCI & MODEL AI
+ *
+ * Jalan kedua untuk memasang kunci Gemini, bagi pemilik yang lupa
+ * mengisinya di Apps Script ▸ Project Settings ▸ Script Properties.
+ * Kunci yang sudah tersimpan tidak pernah dikirim balik ke layar —
+ * yang tampil hanya bentuk tersamarnya.
+ * ============================================================ */
+
+var AISET = {muat:false, data:null};
+
+function kartuAi(){
+  return '<div class="card flat" style="background:#f5f3ff"><b style="font-size:12px">✨ Kunci &amp; Model AI</b>'+
+    '<div class="sub" style="margin-top:4px">Fitur AI memakai Gemini. Kunci biasanya dipasang lewat '+
+    '<b>Apps Script ▸ Project Settings ▸ Script Properties</b>; bila terlewat, pasang di sini.</div>'+
+    '<div id="aiKotak" style="margin-top:8px"><div class="sub">⏳ Memeriksa…</div></div>'+
+  '</div>';
+}
+
+/** Ambil status AI dari server. Butuh PIN pengurus — diperiksa di server. */
+function muatStatusAi(){
+  var kotak = $('aiKotak');
+  if(!kotak) return;
+  callServer('ai_status', {pin: String(S.settings.managerPin||'')}).then(function(r){
+    AISET.data = r; AISET.muat = true;
+    gambarKartuAi();
+  }).catch(function(e){
+    if($('aiKotak')) $('aiKotak').innerHTML = '<div class="sub">⚠️ '+esc(e.message)+'</div>';
+  });
+}
+
+function gambarKartuAi(){
+  var kotak = $('aiKotak');
+  if(!kotak || !AISET.data) return;
+  var r = AISET.data;
+  var dipilih = String(r.model || '');
+  var adaDiDaftar = r.pilihan.some(function(m){ return m.id === dipilih; });
+
+  kotak.innerHTML =
+    '<div class="card flat '+(r.terpasang?'b-green':'b-yellow')+'" style="margin-bottom:8px">'+
+      '<b style="font-size:11.5px">'+(r.terpasang ? '✅ KUNCI TERPASANG' : '⚠️ KUNCI BELUM ADA')+'</b>'+
+      '<div class="sub" style="margin-top:3px">'+
+        (r.terpasang ? 'Kunci: <code>'+esc(r.kunciSamar)+'</code>' : 'Fitur AI sedang nonaktif.')+
+        (r.modelAktif ? '<br>Model yang terakhir berhasil: <b>'+esc(r.modelAktif)+'</b>' : '')+
+      '</div>'+
+    '</div>'+
+    '<label class="f">Kunci API Gemini</label>'+
+    '<input class="inp" id="aiKunci" type="password" autocomplete="off" '+
+      'placeholder="'+(r.terpasang?'biarkan kosong bila tidak diubah':'tempel kunci di sini (AIza…)')+'">'+
+    '<div class="sub" style="margin-top:4px">Ambil kunci gratis di '+
+      '<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. '+
+      'Pasang juga batas anggaran di Google Cloud agar salah pakai tidak menjadi tagihan.</div>'+
+
+    '<label class="f" style="margin-top:10px">Model AI</label>'+
+    '<select class="inp" id="aiModel" onchange="ubahPilihanModelAi(this.value)">'+
+      r.pilihan.map(function(m){
+        return '<option value="'+esc(m.id)+'"'+(m.id===dipilih?' selected':'')+'>'+esc(m.nama)+'</option>';
+      }).join('')+
+      '<option value="__lain"'+((!adaDiDaftar && dipilih)?' selected':'')+'>Model lain (ketik sendiri)…</option>'+
+    '</select>'+
+    '<div class="sub" id="aiModelKet" style="margin-top:4px">'+esc(ketModelAi(dipilih))+'</div>'+
+    '<div id="aiModelLainBox" style="display:'+((!adaDiDaftar && dipilih)?'block':'none')+';margin-top:6px">'+
+      '<label class="f">Nama model</label>'+
+      '<input class="inp" id="aiModelLain" value="'+esc(adaDiDaftar?'':dipilih)+'" '+
+        'placeholder="contoh: gemini-4-argon">'+
+      '<div class="sub" style="margin-top:4px">Dipakai bila Google merilis model baru setelah aplikasi '+
+      'ini terbit. Nama harus persis seperti di dokumentasi Gemini API.</div>'+
+    '</div>'+
+
+    '<div class="row" style="margin-top:10px">'+
+      '<button class="btn sm dark" onclick="simpanAi()">💾 Simpan Kunci &amp; Model</button>'+
+      '<button class="btn sm blue" onclick="ujiAi()">🔌 Uji Sambungan</button>'+
+      (r.terpasang ? '<button class="btn sm red" onclick="hapusKunciAi()">Hapus Kunci</button>' : '')+
+    '</div>'+
+    '<div class="sub" id="aiPesan" style="margin-top:8px"></div>';
+}
+
+function ketModelAi(id){
+  if(!AISET.data) return '';
+  for(var i=0;i<AISET.data.pilihan.length;i++){
+    if(AISET.data.pilihan[i].id === id) return AISET.data.pilihan[i].ket;
+  }
+  return id ? 'Model diketik sendiri.' : '';
+}
+
+function ubahPilihanModelAi(v){
+  var box = $('aiModelLainBox');
+  if(box) box.style.display = (v === '__lain') ? 'block' : 'none';
+  var ket = $('aiModelKet');
+  if(ket) ket.textContent = (v === '__lain') ? 'Ketik nama modelnya di bawah.' : ketModelAi(v);
+}
+
+function modelAiTerpilih(){
+  var sel = $('aiModel');
+  if(!sel) return '';
+  if(sel.value === '__lain') return ($('aiModelLain') ? $('aiModelLain').value.trim() : '');
+  return sel.value;
+}
+
+function pesanAi(teks, kelas){
+  var el = $('aiPesan');
+  if(el) el.innerHTML = '<span class="'+(kelas||'')+'">'+esc(teks)+'</span>';
+}
+
+function simpanAi(){
+  var pin = String(S.settings.managerPin||'');
+  var kunci = $('aiKunci') ? $('aiKunci').value.trim() : '';
+  var model = modelAiTerpilih();
+  pesanAi('⏳ Menyimpan…');
+
+  var langkah = Promise.resolve();
+  if(kunci){
+    langkah = langkah.then(function(){
+      return callServer('ai_simpan_kunci', {pin:pin, key:kunci, aktorNama:namaAktor()});
+    });
+  }
+  langkah.then(function(){
+    return callServer('ai_set_model', {pin:pin, model:model, aktorNama:namaAktor()});
+  }).then(function(){
+    if($('aiKunci')) $('aiKunci').value = '';
+    if(kunci) S.aiEnabled = true;
+    pesanAi('✅ Tersimpan. Tekan "Uji Sambungan" untuk memastikannya bekerja.');
+    muatStatusAi();
+  }).catch(function(e){
+    pesanAi('⚠️ '+e.message);
+  });
+}
+
+function ujiAi(){
+  pesanAi('⏳ Menghubungi Gemini…');
+  callServer('ai_uji', {pin:String(S.settings.managerPin||''), aktorNama:namaAktor()}).then(function(r){
+    pesanAi('✅ '+r.pesan);
+    muatStatusAi();
+  }).catch(function(e){
+    pesanAi('⚠️ '+e.message);
+  });
+}
+
+function hapusKunciAi(){
+  konfirmasi('Hapus kunci API Gemini? Seluruh fitur AI akan nonaktif sampai kunci dipasang lagi.',
+    function(){
+      callServer('ai_simpan_kunci', {pin:String(S.settings.managerPin||''), key:'', aktorNama:namaAktor()})
+        .then(function(){
+          S.aiEnabled = false;
+          pesanAi('Kunci dihapus. Fitur AI nonaktif.');
+          muatStatusAi();
+        }).catch(function(e){ pesanAi('⚠️ '+e.message); });
+    });
+}
+
+function namaAktor(){ return S.me ? S.me.nama : 'Pengurus'; }
+
+
 /* ============================================================
  * LISENSI
  * ============================================================ */
@@ -6306,6 +7052,7 @@ function simpanSettings(){
     if($('setPenyedia'))    v.petaPenyedia    = $('setPenyedia').value;
     if($('setKunci'))       v.petaKunci       = $('setKunci').value.trim();
     if($('setJenisKustom')) v.petaJenisKustom = $('setJenisKustom').value;
+    if($('setPmtilesUrl'))  v.petaPmtilesUrl   = $('setPmtilesUrl').value.trim();
     if($('setLapisanKustom')) v.petaLapisanKustom = $('setLapisanKustom').value.trim();
     if($('setUrlKustom'))   v.petaUrlKustom   = $('setUrlKustom').value.trim();
     if($('setNamaKustom'))  v.petaNamaKustom  = $('setNamaKustom').value.trim();
@@ -6394,6 +7141,7 @@ function boot(){
 
   refresh().then(function(){
     tampilkanBilahPrivasi();
+    pmtilesOtomatis();      // buka peta PMTiles bersama bila alamatnya tersimpan
     pulihkanSesiLokal();
     return flushOutbox();
   }).catch(function(err){
