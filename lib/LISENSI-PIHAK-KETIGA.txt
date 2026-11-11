@@ -155,3 +155,49 @@ Penyedia aplikasi tidak menyimpan salinan data pelanggan.
    Catatan merek: "QR Code" adalah merek terdaftar DENSO WAVE INCORPORATED.
    Pemakaian teknologi QR Code itu sendiri bebas royalti — DENSO WAVE tidak
    memungut biaya lisensi paten untuk pembuatan maupun pembacaan kode QR.
+
+--------------------------------------------------------------------
+PMTiles 4.5.0  (lib/pmtiles.js)
+Hak cipta (c) 2021-2024 Protomaps LLC
+Lisensi: BSD 3-Clause
+https://github.com/protomaps/PMTiles
+
+protomaps-leaflet 5.1.0  (lib/protomaps-leaflet.js)
+Hak cipta (c) 2021-2024 Protomaps LLC
+Lisensi: BSD 3-Clause
+https://github.com/protomaps/protomaps-leaflet
+
+Redistribusi dalam bentuk sumber maupun biner, dengan atau tanpa
+perubahan, diizinkan sepanjang syarat berikut dipenuhi:
+
+ 1. Redistribusi kode sumber harus menyertakan pemberitahuan hak cipta
+    di atas, daftar syarat ini, dan penafian berikut.
+ 2. Redistribusi dalam bentuk biner harus memuat pemberitahuan hak cipta
+    di atas, daftar syarat ini, dan penafian berikut pada dokumentasi
+    dan/atau bahan lain yang disertakan.
+ 3. Nama pemegang hak cipta maupun nama kontributornya tidak boleh
+    dipakai untuk mendukung atau mempromosikan produk turunan tanpa
+    izin tertulis terlebih dahulu.
+
+PERANGKAT LUNAK INI DISEDIAKAN APA ADANYA TANPA JAMINAN APA PUN.
+
+--------------------------------------------------------------------
+Ubin peta OpenStreetMap
+Data peta (c) Kontributor OpenStreetMap, tersedia di bawah Open
+Database License (ODbL).  https://www.openstreetmap.org/copyright
+
+Ubin diambil langsung dari https://tile.openstreetmap.org dan tunduk
+pada Tile Usage Policy OpenStreetMap Foundation:
+https://operations.osmfoundation.org/policies/tiles/
+
+Yang WAJIB dipatuhi aplikasi ini dan tidak boleh dilanggar:
+  - kredit "Kontributor OpenStreetMap" harus selalu tampak di peta
+    dan tidak boleh disembunyikan di balik tombol atau menu;
+  - ubin TIDAK BOLEH diunduh massal, dikumpulkan jadi arsip, atau
+    disimpan untuk dipakai luring;
+  - layanan ubin ini gratis dan dibiayai sumbangan. Aksesnya dapat
+    dihentikan sewaktu-waktu, terutama untuk layanan komersial.
+
+Untuk pemakaian luring atau beban tinggi, gunakan PMTiles atau peta
+dasar berbayar dengan kunci sendiri (MapTiler/Esri/Mapbox) yang sudah
+disediakan di Pengaturan ▸ Peta Dasar.
