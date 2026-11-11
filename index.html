@@ -253,6 +253,31 @@ main{max-width:1200px;margin:0 auto;padding:14px}
   background:#f8fafc}
 .fotopick .ava{width:56px;height:56px}
 .fotohint{font-size:10.5px;color:var(--muted);margin-top:3px}
+/* galeri foto dokumentasi */
+.galwrap{border:2px dashed #cbd5e1;padding:10px;background:#f8fafc}
+.galstrip{display:flex;flex-wrap:wrap;gap:8px}
+.galitem{position:relative;width:70px;height:70px;border:2px solid #000;background:#e2e8f0;flex:none}
+.galitem img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.galitem img.gagal{opacity:.25}
+.galitem .galx{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border:2px solid #000;
+  background:#ef4444;color:#fff;font-size:11px;font-weight:900;line-height:1;cursor:pointer;padding:0}
+.galstrip.besar .galitem{width:92px;height:92px}
+.galkosong{font-size:11px;color:#94a3b8;font-weight:700;padding:6px 2px}
+/* aksi cepat berkelompok
+   Sengaja memakai kisi sendiri, bukan .g2: pada lebar ponsel .g2 runtuh
+   menjadi satu kolom, dan dua puluh pintasan yang bertumpuk satu kolom
+   justru memanjangkan halaman Ringkasan — kebalikan dari tujuannya.
+   Labelnya pendek, jadi dua kolom tetap terbaca di layar 320 px. */
+.qgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.qgrid .btn{padding:9px 8px;font-size:11px;letter-spacing:0;justify-content:flex-start;
+  text-align:left;line-height:1.25;min-height:42px}
+@media(min-width:720px){.qgrid{grid-template-columns:repeat(4,1fr)}}
+.qlbl{font-size:9.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;
+  color:#64748b;margin:12px 0 6px}
+.qlbl:first-of-type{margin-top:10px}
+.qbadge{display:inline-block;min-width:17px;padding:1px 5px;margin-left:4px;background:#000;
+  color:#fde047;border:1.5px solid #000;font-size:9.5px;font-weight:900;line-height:1.35}
+.btn.red .qbadge,.btn.dark .qbadge{background:#fff;color:#000}
 .fotobtns{display:flex;gap:6px;flex-wrap:wrap}
 .fotobtn{display:inline-flex;align-items:center;gap:5px;border:2px solid #000;background:#fff;
   padding:6px 10px;font-size:11.5px;font-weight:800;cursor:pointer;box-shadow:2px 2px 0 #000;
@@ -1683,6 +1708,8 @@ function formModal(title, fields, initial, onSubmit, wide){
                '</div>'+
              '</div>'+
            '</div>'+besar.replace(/./g,'');
+    } else if(f.t === 'fotos'){
+      h += ruasGaleri(f, v);
     } else if(f.t === 'checkbox'){
       h += '<label class="row" style="cursor:pointer"><input type="checkbox" id="f_'+f.k+'"'+(v?' checked':'')+
            ' style="width:18px;height:18px"> <span style="font-weight:800;font-size:12px">'+esc(f.l)+'</span></label>';
@@ -1716,7 +1743,211 @@ function formModal(title, fields, initial, onSubmit, wide){
       };
     });
   });
+
+  /* Ruas galeri menerima beberapa berkas sekaligus. */
+  fields.forEach(function(f){
+    if(f.t !== 'fotos') return;
+    ['gl_cam_', 'gl_file_'].forEach(function(pfx){
+      var inp = $(pfx + f.k);
+      if(!inp) return;
+      inp.onchange = function(){
+        unggahGaleri(f.k, this.files, f);
+        this.value = '';
+      };
+    });
+    gambarGaleri(f.k, f);
+  });
 }
+
+
+/* ============================================================
+ * RUAS GALERI FOTO
+ *
+ * Beberapa foto dokumentasi dalam satu ruas. Seluruh id Drive-nya
+ * disimpan dalam SATU kolom, dipisahkan baris baru — jadi menambah
+ * kemampuan ini tidak menambah kolom per foto, dan sheet tetap bisa
+ * dibaca manusia di Google Sheets.
+ *
+ * Fotonya diperkecil di perangkat SEBELUM dikirim. Warga memotret
+ * dengan kamera 48 MP lalu berkasnya 8 MB; diunggah apa adanya, kuota
+ * Drive pengurus habis dalam sebulan dan aplikasi terasa lambat di
+ * jaringan seluler. Satu foto dokumentasi setelah diperkecil biasanya
+ * 80–200 KB.
+ * ============================================================ */
+
+var GALERI_MAKS = 4;
+
+/**
+ * Pecah nilai kolom menjadi daftar id foto.
+ *
+ * HANYA baris baru yang menjadi pemisah. Jangan tambahkan koma: data URL
+ * berisi koma ("data:image/jpeg;base64,…"), sehingga memecah pada koma akan
+ * membelah satu foto menjadi dua potongan yang keduanya rusak.
+ */
+function galeriPecah(v){
+  return String(v || '').split('\n').map(function(s){ return s.trim(); })
+         .filter(function(s){ return !!s; });
+}
+function galeriGabung(arr){ return arr.join('\n'); }
+
+function galeriNilai(k){
+  var el = $('f_' + k);
+  return el ? galeriPecah(el.value) : [];
+}
+
+function galeriSimpan(k, arr, f){
+  var el = $('f_' + k);
+  if(el) el.value = galeriGabung(arr);
+  gambarGaleri(k, f);
+}
+
+function ruasGaleri(f, v){
+  var maks = f.maks || GALERI_MAKS;
+  return '<div class="galwrap">'+
+    '<div class="galstrip" id="gl_prev_'+f.k+'"></div>'+
+    '<div class="fotobtns" style="margin-top:8px">'+
+      '<label class="fotobtn cam">📷 Ambil Foto'+
+        '<input type="file" id="gl_cam_'+f.k+'" accept="image/*" capture="environment">'+
+      '</label>'+
+      '<label class="fotobtn">🖼️ Pilih dari Galeri'+
+        '<input type="file" id="gl_file_'+f.k+'" accept="image/*" multiple>'+
+      '</label>'+
+    '</div>'+
+    '<input type="hidden" id="f_'+f.k+'" value="'+esc(v || '')+'">'+
+    '<div class="fotohint" id="gl_hint_'+f.k+'">Maksimal '+maks+' foto. '+
+      'Otomatis diperkecil sebelum dikirim ke Google Drive.</div>'+
+  '</div>';
+}
+
+function gambarGaleri(k, f){
+  var kotak = $('gl_prev_' + k);
+  if(!kotak) return;
+  var arr = galeriNilai(k);
+  var maks = (f && f.maks) || GALERI_MAKS;
+
+  kotak.innerHTML = arr.length
+    ? arr.map(function(id, i){
+        return '<div class="galitem">'+
+          '<img src="'+esc(fotoSrc(id, 400))+'" alt="dokumentasi '+(i+1)+'" loading="lazy" '+
+            'data-foto="'+esc(id)+'" data-judul="Dokumentasi '+(i+1)+'" '+
+            'onclick="zoomFoto(this.getAttribute(\'data-foto\'),this.getAttribute(\'data-judul\'))" '+
+            'onerror="this.classList.add(\'gagal\')">'+
+          '<button type="button" class="galx" title="Hapus foto ini" '+
+            'onclick="hapusGaleriFoto(\''+jsq(k)+'\','+i+')">✕</button>'+
+        '</div>';
+      }).join('')
+    : '<div class="galkosong">Belum ada foto dokumentasi.</div>';
+
+  var hint = $('gl_hint_' + k);
+  if(hint){
+    hint.textContent = arr.length
+      ? arr.length + ' dari ' + maks + ' foto terpasang.' +
+        (arr.length >= maks ? ' Hapus salah satu untuk menambah lagi.' : ' Ketuk foto untuk memperbesar.')
+      : 'Maksimal ' + maks + ' foto. Otomatis diperkecil sebelum dikirim ke Google Drive.';
+  }
+}
+
+function hapusGaleriFoto(k, idx){
+  var arr = galeriNilai(k);
+  arr.splice(idx, 1);
+  galeriSimpan(k, arr);
+  toast('Foto dilepas dari daftar.','info');
+}
+
+/**
+ * Unggah beberapa berkas satu per satu.
+ *
+ * Sengaja berurutan, bukan serentak. Apps Script menjalankan permintaan
+ * secara giliran dan tiap unggahan menulis berkas ke Drive; mengirim empat
+ * sekaligus dari jaringan seluler justru lebih sering gagal separuh jalan
+ * dan menyisakan berkas yatim di Drive.
+ */
+function unggahGaleri(k, files, f){
+  if(!files || !files.length) return;
+  f = f || {};
+  var maks = f.maks || GALERI_MAKS;
+  var hint = $('gl_hint_' + k), tombol = $('btnSimpanForm');
+  function pesan(t){ if(hint) hint.textContent = t; }
+
+  if(!S.online){
+    pesan('Perlu koneksi internet untuk mengunggah foto.');
+    toast('Unggah foto memerlukan koneksi.','err');
+    return;
+  }
+
+  var sudah = galeriNilai(k);
+  var sisa  = maks - sudah.length;
+  if(sisa <= 0){
+    pesan('Sudah '+maks+' foto. Hapus salah satu dulu.');
+    toast('Maksimal '+maks+' foto.','info');
+    return;
+  }
+
+  var antre = Array.prototype.slice.call(files, 0, sisa);
+  var diabaikan = files.length - antre.length;
+  if(tombol) tombol.disabled = true;
+
+  var ke = 0, berhasil = 0, galatTerakhir = '';
+
+  function lanjut(){
+    if(ke >= antre.length){
+      if(tombol) tombol.disabled = false;
+      gambarGaleri(k, f);
+      if(berhasil){
+        toast(berhasil + ' foto terunggah.' +
+              (diabaikan ? ' ' + diabaikan + ' foto dilewati karena melebihi batas.' : ''), 'ok');
+      }
+      if(galatTerakhir){
+        pesan(galatTerakhir);
+        toast(galatTerakhir, 'err');
+      }
+      return;
+    }
+    var berkas = antre[ke++];
+    pesan('Memperkecil & mengunggah foto '+ke+' dari '+antre.length+'…');
+
+    kecilkanGambar(berkas, 1280, 0.72).then(function(dataUrl){
+      return callServer('foto_upload',
+        {dataUrl:dataUrl, nama:(_formCb && _formCb.nama) || 'dokumentasi'});
+    }).then(function(res){
+      var id = res.fotoUrl || res.fileId || '';
+      if(id){
+        var arr = galeriNilai(k);
+        arr.push(id);
+        var el = $('f_' + k);
+        if(el) el.value = galeriGabung(arr);
+        berhasil++;
+        gambarGaleri(k, f);
+      }
+      lanjut();
+    }).catch(function(err){
+      galatTerakhir = err.message || 'Gagal mengunggah salah satu foto.';
+      lanjut();
+    });
+  }
+  lanjut();
+}
+
+/** Deretan thumbnail galeri untuk ditampilkan di daftar/kartu. */
+function galeriThumbs(v, judul, kelas){
+  var arr = galeriPecah(v);
+  if(!arr.length) return '';
+  return '<div class="galstrip '+(kelas||'')+'" style="margin-top:10px">'+
+    arr.map(function(id, i){
+      return '<div class="galitem lihat">'+
+        '<img src="'+esc(fotoSrc(id, 400))+'" loading="lazy" '+
+          'alt="'+esc((judul||'Dokumentasi')+' — foto '+(i+1))+'" '+
+          'title="Ketuk untuk memperbesar" '+
+          'data-foto="'+esc(id)+'" '+
+          'data-judul="'+esc((judul||'Dokumentasi')+' ('+(i+1)+'/'+arr.length+')')+'" '+
+          'onclick="zoomFoto(this.getAttribute(\'data-foto\'),this.getAttribute(\'data-judul\'))" '+
+          'onerror="this.parentElement.style.display=\'none\'">'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+function galeriJumlah(v){ return galeriPecah(v).length; }
 
 /* ---------- unggah foto dari dalam formulir ---------- */
 function unggahFotoField(key, file, f){
@@ -2255,14 +2486,7 @@ function viewOverview(){
 
   /* aksi cepat + pengumuman */
   h += '<div class="grid g2">';
-  h += '<div class="card"><h2 class="sec">⚡ Aksi Cepat</h2><div class="grid g2" style="margin-top:10px">'+
-      '<button class="btn red" onclick="go(\'patrol\')">🚨 Tombol Darurat</button>'+
-      '<button class="btn blue" onclick="go(\'pengaduan\')">📣 Buat Pengaduan</button>'+
-      '<button class="btn" onclick="go(\'iuran\')">💳 Cek Tagihan</button>'+
-      '<button class="btn" onclick="openAI()">✨ Tanya Asisten AI</button>'+
-      '<button class="btn" onclick="go(\'patrol\')">🗺️ Peta &amp; Petugas</button>'+
-      '<button class="btn" onclick="go(\'cctv\')">📹 Lihat CCTV</button>'+
-    '</div></div>';
+  h += aksiCepat();
 
   var pin = S.pengumuman.filter(function(p){ return p.isPinned; });
   var showAnn = (pin.length ? pin : S.pengumuman).slice(0,3);
@@ -2277,6 +2501,71 @@ function viewOverview(){
   h += '</div>';
 
   return h;
+}
+
+/* ============================================================
+ * AKSI CEPAT
+ *
+ * Pintasan ke seluruh modul, dikelompokkan supaya warga tidak perlu
+ * menggeser bar tab mencari-cari. Yang paling mendesak diletakkan
+ * paling atas; yang hanya untuk pengurus baru muncul di mode pengurus.
+ * ============================================================ */
+function aksiCepat(){
+  var jumlahLapak = (S.lapak||[]).filter(function(x){ return x.status==='Aktif'; }).length;
+  var pengaduanBaru = (S.pengaduan||[]).filter(function(x){ return x.status==='Baru'; }).length;
+  var votingAktif = (S.voting||[]).filter(function(x){ return x.status==='Aktif'; }).length;
+
+  function tbl(ikon, label, aksi, kelas, lencana){
+    return '<button class="btn '+(kelas||'')+'" onclick="'+aksi+'">'+ikon+' '+label+
+      (lencana ? ' <span class="qbadge">'+lencana+'</span>' : '')+'</button>';
+  }
+
+  var h = '<div class="card"><h2 class="sec">⚡ Aksi Cepat</h2>';
+
+  h += '<div class="qlbl">Mendesak</div><div class="qgrid">'+
+    tbl('🚨','Tombol Darurat',"go('patrol')",'red')+
+    tbl('📣','Buat Pengaduan',"go('pengaduan')",'blue', pengaduanBaru||0)+
+  '</div>';
+
+  h += '<div class="qlbl">Sehari-hari</div><div class="qgrid">'+
+    tbl('💳','Cek Tagihan Iuran',"go('iuran')")+
+    tbl('🛒','Layanan &amp; Jual Beli',"go('lapak')",'', jumlahLapak||0)+
+    tbl('📢','Pengumuman',"go('pengumuman')")+
+    tbl('💬','Forum Warga',"pengumumanTab='forum';go('pengumuman')")+
+    tbl('👥','Data Warga',"go('warga')")+
+    tbl('🗳️','Voting Digital',"go('voting')",'', votingAktif||0)+
+  '</div>';
+
+  h += '<div class="qlbl">Lingkungan</div><div class="qgrid">'+
+    tbl('🗺️','Peta &amp; Petugas',"go('patrol')")+
+    tbl('📹','Lihat CCTV',"go('cctv')")+
+    tbl('📦','Aset &amp; Fasilitas',"go('aset')")+
+    tbl('🏛️','Struktur Pengurus',"go('organisasi')")+
+  '</div>';
+
+  h += '<div class="qlbl">Catatan &amp; Bantuan</div><div class="qgrid">'+
+    tbl('📄','Laporan Kas',"go('laporan')")+
+    tbl('🧾','Log Transparansi',"go('audit')")+
+    tbl('🆔','Kartu Warga Saya',"kartuSaya()")+
+    tbl('✨','Tanya Asisten AI',"openAI()")+
+  '</div>';
+
+  if(isPengurus()){
+    h += '<div class="qlbl">Khusus Pengurus</div><div class="qgrid">'+
+      tbl('➕','Catat Transaksi Kas',"go('laporan');setTimeout(function(){formKas();},120)",'dark')+
+      tbl('👤','Tambah Warga Baru',"go('warga');setTimeout(function(){formWarga();},120)",'dark')+
+      tbl('📝','Buat Pengumuman',"go('pengumuman');setTimeout(function(){formPengumuman();},120)")+
+      tbl('⚙️','Pengaturan',"openSettings()")+
+    '</div>';
+  }
+
+  return h + '</div>';
+}
+
+/** Buka kartu warga digital milik pengguna yang sedang memakai aplikasi. */
+function kartuSaya(){
+  if(S.me && S.me.id){ kartuWarga(S.me.id); return; }
+  toast('Pilih dulu identitas Anda lewat tombol 👤 di pojok atas.','info');
 }
 
 function stat(lbl, val, hint, cls){
@@ -3853,13 +4142,22 @@ function viewAset(){
   '</div>';
 
   h += '<div class="table-wrap"><table><thead><tr>'+
-    '<th>Aset</th><th>Kategori</th><th>Jumlah</th><th>Kondisi</th><th>Lokasi</th><th>Status</th><th>Aksi</th>'+
+    '<th>Aset</th><th>Foto</th><th>Kategori</th><th>Jumlah</th><th>Kondisi</th><th>Lokasi</th><th>Status</th><th>Aksi</th>'+
     '</tr></thead><tbody>';
-  if(!S.aset.length) h += '<tr><td colspan="7" class="empty">Belum ada aset terdaftar.</td></tr>';
+  if(!S.aset.length) h += '<tr><td colspan="8" class="empty">Belum ada aset terdaftar.</td></tr>';
   S.aset.forEach(function(a){
     var scls = a.status==='Tersedia'?'b-green':a.status==='Dipinjam'?'b-yellow':'b-red';
     var kcls = a.kondisi==='Sangat Baik'?'b-green':a.kondisi==='Perlu Perbaikan'?'b-yellow':'b-red';
+    var nFoto = galeriJumlah(a.galeri);
     h += '<tr><td><b>'+esc(a.nama)+'</b>'+pendingMark(a)+'<div class="sub">'+esc(a.kodeAset)+'</div></td>'+
+      '<td>'+(nFoto
+        ? '<div class="galitem lihat" style="width:46px;height:46px">'+
+            '<img src="'+esc(fotoSrc(galeriPecah(a.galeri)[0], 200))+'" loading="lazy" '+
+              'alt="Foto '+esc(a.nama)+'" title="Ketuk untuk memperbesar ('+nFoto+' foto)" '+
+              'onclick="lihatGaleriAset(\''+jsq(a.id)+'\')" '+
+              'onerror="this.style.opacity=0.25">'+
+          '</div>'+(nFoto>1?'<div class="sub">'+nFoto+' foto</div>':'')
+        : '<span class="sub">—</span>')+'</td>'+
       '<td style="font-size:11.5px">'+esc(a.kategori)+'</td>'+
       '<td>'+num(a.jumlah)+'</td>'+
       '<td><span class="badge '+kcls+'">'+esc(a.kondisi)+'</span></td>'+
@@ -3885,12 +4183,29 @@ function formAset(id){
     {k:'jumlah',l:'Jumlah Unit',t:'number',req:true},
     {k:'kondisi',l:'Kondisi',t:'select',opt:['Sangat Baik','Perlu Perbaikan','Rusak']},
     {k:'lokasi',l:'Lokasi Penyimpanan',t:'text'},
-    {k:'status',l:'Status',t:'select',opt:['Tersedia','Dipinjam','Maintenance']}
+    {k:'status',l:'Status',t:'select',opt:['Tersedia','Dipinjam','Maintenance']},
+    {k:'galeri',l:'Foto Dokumentasi Aset',t:'fotos',
+     help:'Foto kondisi barang, nomor seri, atau kerusakan. Berguna saat serah terima peminjaman.'}
   ], init, function(v){
     if(id){ v.id=id; mutate('aset_update', v, {okMsg:'Aset diperbarui.'}).then(render).catch(function(){}); }
     else   { mutate('aset_add', v, {okMsg:'Aset ditambahkan.'}).then(render).catch(function(){}); }
   }, true);
 }
+/** Tampilkan seluruh foto dokumentasi satu aset dalam satu jendela. */
+function lihatGaleriAset(id){
+  var a = S.aset.filter(function(x){return x.id===id;})[0];
+  if(!a) return;
+  var arr = galeriPecah(a.galeri);
+  if(!arr.length){ toast('Aset ini belum punya foto dokumentasi.','info'); return; }
+  if(arr.length === 1){ zoomFoto(arr[0], a.nama); return; }
+
+  openModal('Foto Dokumentasi — '+a.nama,
+    '<div class="sub" style="margin-bottom:8px">'+esc(a.kodeAset)+' • '+arr.length+
+    ' foto • ketuk untuk memperbesar</div>'+
+    galeriThumbs(a.galeri, a.nama, 'besar'),
+    '<button class="btn" onclick="closeModal()">Tutup</button>');
+}
+
 function hapusAset(id){
   var a = S.aset.filter(function(x){return x.id===id;})[0];
   konfirmasi('Hapus aset "'+(a?a.nama:id)+'" dari inventaris?', function(){
@@ -4140,6 +4455,7 @@ function viewLapak(){
         : '')+
 
       '<div style="margin-top:10px;font-size:13px">'+nl2br(o.deskripsi||'')+'</div>'+
+      galeriThumbs(o.galeri, o.judul)+
 
       '<div class="spread" style="margin-top:10px;align-items:flex-end">'+
         '<div><div style="font-size:10px;font-weight:900;color:#64748b">HARGA</div>'+
@@ -4206,11 +4522,13 @@ function formLapak(id){
     {k:'blok',l:'Alamat / Blok',t:'text'},
     {k:'noHp',l:'Nomor WhatsApp (akan terlihat warga lain)',t:'text',req:true,
      ph:'0812-xxxx-xxxx'},
-    {k:'fotoUrl',l:'Foto (opsional)',t:'foto',bukti:true}
+    {k:'fotoUrl',l:'Foto Utama (opsional)',t:'foto',bukti:true},
+    {k:'galeri',l:'Foto Tambahan',t:'fotos',
+     help:'Sudut lain, kondisi detail, atau contoh hasil pekerjaan.'}
   ], o ? {
     jenis:o.jenis, judul:o.judul, kategori:o.kategori, deskripsi:o.deskripsi,
     harga:o.harga, satuan:o.satuan, kondisi:o.kondisi, pemilikNama:o.pemilikNama,
-    blok:o.blok, noHp:o.noHp, fotoUrl:o.fotoUrl
+    blok:o.blok, noHp:o.noHp, fotoUrl:o.fotoUrl, galeri:o.galeri
   } : {
     jenis:jenisAwal, satuan:'nego', kategori:'Lainnya',
     pemilikNama:(S.me?S.me.nama:''), blok:(S.me?(S.me.blok+' '+S.me.noRumah):''),
@@ -5738,6 +6056,7 @@ function viewPengumuman(){
         '<div class="row"><span class="badge b-violet">'+esc(a.kategori)+'</span>'+
           '<span class="badge '+pcls+'">'+esc(a.prioritas)+'</span></div></div>'+
         '<div style="margin-top:10px;font-size:13px">'+nl2br(a.isi)+'</div>'+
+        galeriThumbs(a.galeri, a.judul, 'besar')+
         (isPengurus()?'<div class="row" style="margin-top:10px">'+
           '<button class="btn sm blue" onclick="formPengumuman(\''+a.id+'\')">Edit</button>'+
           '<button class="btn sm red" onclick="hapusPengumuman(\''+a.id+'\')">Hapus</button></div>':'')+
@@ -5757,6 +6076,7 @@ function viewPengumuman(){
       '<div style="flex:1"><b style="font-size:14px">'+esc(t.judul)+'</b>'+pendingMark(t)+
         '<div class="sub">'+esc(t.pengarangNama)+' • '+esc(t.pengarangBlok)+' • '+esc(t.timestamp)+'</div></div></div>'+
       '<div style="margin-top:8px;font-size:13px">'+nl2br(t.isi)+'</div>'+
+      galeriThumbs(t.galeri, t.judul)+
       '<div class="row" style="margin-top:10px">'+
         '<button class="btn sm" onclick="sukaTopik(\''+t.id+'\')">👍 '+num(t.likesCount)+'</button>'+
         '<button class="btn sm blue" onclick="formBalasan(\''+t.id+'\')">💬 Balas ('+bal.length+')</button>'+
@@ -5785,7 +6105,9 @@ function formPengumuman(id){
     {k:'tanggal',l:'Tanggal',t:'date',req:true},
     {k:'kategori',l:'Kategori',t:'select',opt:['Kebijakan Lingkungan','Kegiatan Warga','Keuangan RT','Imbauan']},
     {k:'prioritas',l:'Prioritas',t:'select',opt:['Sangat Penting','Penting','Imbauan']},
-    {k:'isPinned',l:'Sematkan di paling atas',t:'checkbox'}
+    {k:'isPinned',l:'Sematkan di paling atas',t:'checkbox'},
+    {k:'galeri',l:'Foto / Lampiran Pendukung',t:'fotos',
+     help:'Selebaran, surat edaran, atau foto kegiatan. Ketuk foto untuk memperbesar.'}
   ], init, function(v){
     if(id){ v.id=id; mutate('pengumuman_update', v, {okMsg:'Pengumuman diperbarui.'}).then(render).catch(function(){}); }
     else   { mutate('pengumuman_add', v, {okMsg:'Pengumuman diterbitkan.'}).then(render).catch(function(){}); }
@@ -5804,7 +6126,9 @@ function formDiskusi(id){
     {k:'judul',l:'Judul Topik',t:'text',req:true},
     {k:'isi',l:'Isi Diskusi',t:'textarea',req:true},
     {k:'pengarangNama',l:'Nama Anda',t:'text',req:true},
-    {k:'pengarangBlok',l:'Blok / Alamat',t:'text'}
+    {k:'pengarangBlok',l:'Blok / Alamat',t:'text'},
+    {k:'galeri',l:'Foto Pendukung',t:'fotos',
+     help:'Misalnya foto jalan yang rusak atau lampu yang mati, supaya tidak perlu dijelaskan panjang.'}
   ], init, function(v){
     if(id){ v.id=id; mutate('diskusi_update', v, {okMsg:'Topik diperbarui.'}).then(render).catch(function(){}); }
     else   { mutate('diskusi_add', v, {okMsg:'Topik diskusi dibuka.'}).then(render).catch(function(){}); }
