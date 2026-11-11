@@ -6675,6 +6675,14 @@ function kartuAi(){
   return '<div class="card flat" style="background:#f5f3ff"><b style="font-size:12px">✨ Kunci &amp; Model AI</b>'+
     '<div class="sub" style="margin-top:4px">Fitur AI memakai Gemini. Kunci biasanya dipasang lewat '+
     '<b>Apps Script ▸ Project Settings ▸ Script Properties</b>; bila terlewat, pasang di sini.</div>'+
+    (window.WN_DEMO
+      ? '<div class="card flat" style="margin-top:8px;background:#fee2e2">'+
+        '<b style="font-size:11.5px">⚠️ INI VERSI DEMO</b>'+
+        '<div class="sub" style="margin-top:3px">Kunci yang Anda tempel di sini hanya tersimpan '+
+        'di memori halaman dan <b>hilang begitu halaman ditutup atau dimuat ulang</b> — tidak '+
+        'pernah ditulis ke penyimpanan perangkat. Permintaan dikirim langsung dari peramban ini '+
+        'ke server Gemini. <b>Jangan tempel kunci Anda di perangkat milik orang lain.</b></div></div>'
+      : '')+
     '<div id="aiKotak" style="margin-top:8px"><div class="sub">⏳ Memeriksa…</div></div>'+
   '</div>';
 }
@@ -6705,12 +6713,17 @@ function gambarKartuAi(){
         (r.terpasang ? 'Kunci: <code>'+esc(r.kunciSamar)+'</code>' : 'Fitur AI sedang nonaktif.')+
         (r.modelAktif ? '<br>Model yang terakhir berhasil: <b>'+esc(r.modelAktif)+'</b>' : '')+
       '</div>'+
+      (r.usang ? '<div class="sub" style="margin-top:6px;color:#b91c1c"><b>Format kunci sudah usang.</b> '+
+        'Awalan <code>AIza</code> dipensiunkan Google sejak September 2026. Buat kunci baru '+
+        'berawalan <code>AQ.</code> lalu tempel di bawah.</div>' : '')+
     '</div>'+
     '<label class="f">Kunci API Gemini</label>'+
     '<input class="inp" id="aiKunci" type="password" autocomplete="off" '+
-      'placeholder="'+(r.terpasang?'biarkan kosong bila tidak diubah':'tempel kunci di sini (AIza…)')+'">'+
+      'placeholder="'+(r.terpasang?'biarkan kosong bila tidak diubah':'tempel kunci di sini (AQ.…)')+'">'+
     '<div class="sub" style="margin-top:4px">Ambil kunci gratis di '+
       '<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. '+
+      'Kunci terbaru berawalan <code>AQ.</code> — kunci lama berawalan <code>AIza</code> '+
+      'sudah dipensiunkan Google sejak September 2026 dan akan ditolak. '+
       'Pasang juga batas anggaran di Google Cloud agar salah pakai tidak menjadi tagihan.</div>'+
 
     '<label class="f" style="margin-top:10px">Model AI</label>'+
